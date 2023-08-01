@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>
+            Hand Detection and Prediction
+        </title>
+        <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js" integrity="sha384-HwwvtgBNo3bZJJLYd8oVXjrBZt8cqVSpeBNS5n7C8IVInixGAoxmnlMuBnhbgrkm" crossorigin="anonymous"></script>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-4bw+/aepP/YC94hEpVNVgiZdgIC5+VKNBQNGCHeKRQN+PtmoHDEXuppvnDJzQIu9" crossorigin="anonymous">
+        <style>
+            .plots-container {
+                display: flex;
+                justify-content: space-between;
+            }
+            .plot {
+                width: 100%;
+                height: 100%;
+            }
+        </style>
+        <style>
+            .spinner-container {
+                position: fixed;
+                z-index: 99999;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.6); 
+                display: flex;
+                justify-content: center;
+                align-items: center;
+            }
+        </style>
+        <style>
+            .custom-button {
+                font-size: 30px;
+                padding: 10px 20px; 
+                margin: 30px; 
+            }
+        </style>
+    </head>
+    
+   <body>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js" integrity="sha384-HwwvtgBNo3bZJJLYd8oVXjrBZt8cqVSpeBNS5n7C8IVInixGAoxmnlMuBnhbgrkm" crossorigin="anonymous"></script>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">Home</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/calibration">Calibration</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/mesh_rendering">Rendering</a>
+                    </li>
+                </ul>
+            </div>  
+        </div>
+    </nav>
+    <div class="spinner-container" id="loadingSpinner" style="display: none;">
+        <div class="spinner-border text-light" role="status"></div>
+      
+        <div class="text-light" style="padding-left: 15px;">Rendering Mesh...</div>
+    </div>
+    
+    <div class="container row">
+     <img id="video" src=""/>
+     <strong>
+      Take a picture
+     </strong>
+     <button class="btn btn-primary mb-3 custom-button" id="startDetectionButton" onclick="startStream()">
+      Open Camera
+     </button>
+     <button class="btn btn-primary mb-3 custom-button" disabled="" id="stopDetectionButton" onclick="stopStream()">
+      Close Camera
+     </button>
+     <button class="btn btn-primary mb-3 custom-button" id="startPredictionButton" style="display: none;">
+      Render Mesh
+     </button>
+     <br/>
+     <br/>
+     <strong>
+      Choose picture
+     </strong>
+     <form class="mb-3" id="uploadForm">
+      <input class="form-control" id="imageUpload" name="image" type="file"/>
+      <button class="btn btn-primary mb-3 custom-button" type="submit">
+        Upload
+      </button>
+      <span id="uploadStatus"></span>
+     </form>
+     <div class="container">
+        <div class="row">
+          <div class="col-lg-6">
+            <div id="plot1"></div>
+          </div>
+          <div class="col-lg-6">
+            <div id="plot2"></div>
+          </div>
+
+          <div class="col-lg-6">
+            <div id="plot3"></div>
+          </div>
+        </div>
+      </div>
+      
+     <input id="slider" max="100" min="0" style="display: none;" type="range" value="0"/>
+     <div id="radioButtons" style="display: none;">
+      <form id="jointForm">
+       <input id="thumbBase" name="joint" type="radio" value="Thumb Base"/>
+       <label for="thumbBase">
+        Thumb Base
+       </label>
+       <br/>
+       <input id="thumbExtremity" name="joint" type="radio" value="Thumb Extremity"/>
+       <label for="thumbExtremity">
+        Thumb Extremity
+       </label>
+       <br/>
+       <input id="indexBase" name="joint" type="radio" value="Index Base"/>
+       <label for="indexBase">
+        Index Base
+       </label>
+       <br/>
+       <input id="indexExtremity" name="joint" type="radio" value="Index Extremity"/>
+       <label for="indexExtremity">
+        Index Extremity
+       </label>
+       <br/>
+      </form>
+      <script>
+
+var layoutMesh = {
+    title : 'Hand Mesh',
+    autosize: true,
+    scene: {
+        xaxis: {
+            range: [] 
+        },
+        yaxis: {
+            range: []  
+        },
+        zaxis: {
+            range: []  
+        },
+        camera: {
+            eye: {x: 1, y: 1, z: 1}
+        }
+    }
+};
+
+       document.getElementById("uploadForm").addEventListener("submit", function(event) {
+      event.preventDefault();
+        
+      var formData = new FormData();
+      formData.append("image", document.getElementById("imageUpload").files[0]);
+  
+      fetch("/upload_image", {
+          method: "POST",
+          body: formData
+      })
+      .then(response => response.json())
+      .then(data => {
+          console.log(data);
+
+        document.getElementById("uploadStatus").innerText = data.message;
+        $("#startPredictionButton").show();
+
+      });
+  });
+  
+  function startStream() {
+          var video = document.getElementById('video');
+          video.src = "{{ url_for('video_feed_hand_detection') }}";
+          document.getElementById("startDetectionButton").disabled = true;
+          document.getElementById("stopDetectionButton").disabled = false;
+      }
+  
+      function stopStream() {
+          var video = document.getElementById('video');
+          video.src = "";
+          document.getElementById("startDetectionButton").disabled = false;
+          document.getElementById("stopDetectionButton").disabled = true;
+      }
+let mesh_vizualization;
+  var mesh_trace, joint_trace;
+
+  function fetchData() {
+      fetch('/data')
+          .then(response => response.json())    
+          .then(data => {
+              mesh_trace = create_3d_trace(data.mesh);
+              joint_trace = create_joint_trace(data.joints);
+           
+
+
+              Plotly.newPlot('plot1', [mesh_trace, joint_trace], layoutMesh);
+          });
+  }
+  function create_joint_trace(joints) {
+      var x = [], y = [], z = [];
+      for (var i = 0; i < joints.length; i++) {
+          x.push(joints[i][0]);
+          y.push(joints[i][1]);
+          z.push(joints[i][2]);
+      }
+      return {
+          type: 'scatter3d',
+          mode: 'markers',
+          x: x,
+          y: y,
+          z: z,
+          marker: {
+              size: 6,
+              color: 'rgb(0, 0, 255)',
+              opacity: 1.0
+          }
+      };
+  }
+  
+  function create_3d_trace(mesh) {
+  return {
+      type: 'mesh3d',
+      x: mesh.vertices.map(v => v[0]),
+      y: mesh.vertices.map(v => v[1]),
+      z: mesh.vertices.map(v => v[2]),
+      i: mesh.i,
+      j: mesh.j,
+      k: mesh.k,
+      color: 'lightpink',
+      opacity: 0.50
+  };
+  }
+  
+  
+  
+  $(document).ready(function() {
+      $("#startDetectionButton").click(function() {
+          fetch('/start_hand_detection')
+              .then(response => response.json())
+              .then(data => {
+                  console.log(data);
+                  if (data.message === "Done") {
+                      
+                      $("#startPredictionButton").show();
+                  }
+              });
+      });
+  
+      $("#startPredictionButton").click(function() {
+        $("#loadingSpinner").show();
+          fetch('/start_prediction')
+          
+
+              .then(response => response.json())
+              .then(data => {
+                  // Handle the response from the server
+                  console.log(data.message);
+                  
+                  if(data.message == "Done") {
+                        $("#loadingSpinner").hide(); // Hide the spinner after the AJAX request is done
+                      fetchData();
+                      document.getElementById('radioButtons').style.display = 'block';
+                      document.getElementById('slider').style.display = 'block';
+                  }
+              });
+      });
+      document.getElementById('jointForm').addEventListener('change', function() {
+      var labelName = document.querySelector('input[name="joint"]:checked').value;
+  
+      var data = {
+          label_name: labelName,
+      }
+  
+      fetch('/calculate_slices', {
+          method: 'POST',
+          headers: {
+              'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(data),  
+      })
+      .then(response => response.json())  
+      .then(data => {
+          var multiSlices = data.multi_slices;
+          var planeCenters = data.planeCenters;  
+        var normalVector = data.normalVector; 
+
+
+          var layoutSlice = { 
+            title : 'Hand Slice',
+    autosize: true,
+    scene: {
+        camera: {
+            eye: {x: 1, y: 1, z: 1}
+        }
+    }
+};
+
+
+
+  
+          var slider = document.getElementById('slider');
+          slider.oninput = function() {
+              var sliceIndex = this.value;
+              var slices = multiSlices[sliceIndex-1];  
+              var planeCenter = planeCenters[sliceIndex-1];  
+                var plane_trace = create_plane(planeCenter, normalVector);
+              var closestToOriginIndex; 
+              var closestToOriginValue = Infinity;
+              var traces = slices.map((slice, index) => {
+                  var minDistToOrigin = Math.min(...slice.map(pair => Math.sqrt(Math.pow(pair[0], 2) + Math.pow(pair[1], 2)))); // Finds the point with minimum distance to the origin in the current slice
+                  if (minDistToOrigin < closestToOriginValue) {
+                      closestToOriginIndex = index;
+                      closestToOriginValue = minDistToOrigin;
+                  }
+                
+                  // Calculate length of trace
+                  var traceLength = 0;
+                  for (var i = 0; i < slice.length - 1; i++) {
+                      traceLength += Math.sqrt(Math.pow(slice[i+1][0] - slice[i][0], 2) + Math.pow(slice[i+1][1] - slice[i][1], 2));
+                      
+                  }
+                  traceLength *= 1000;  // Convert to mm
+  
+                  return {
+                      x: slice.map(pair => pair[0]),
+                      y: slice.map(pair => pair[1]),
+                      mode: 'lines',
+                      name: `(Length: ${traceLength.toFixed(2)} mm )`
+                  };
+              });
+  
+              // Update the name of the trace that is closest to the origin
+              traces[closestToOriginIndex].name = labelName + " (Length: " + traces[closestToOriginIndex].name.split(":")[1] + ")";
+  
+              var annotations = traces.map((trace, index) => {
+              var color = index == closestToOriginIndex ? 'red' : 'black';
+              return {
+                  x: trace.x[0],
+                  y: trace.y[0],
+                  text: trace.name,
+                  showarrow: false,
+                  font: {
+                      color: color
+                  }
+              };
+          });
+              
+              layoutSlice.annotations = annotations;
+
+            var extend = 0.1;
+            var xValues = mesh_trace.x.concat(mesh_trace.x);
+            var yValues = mesh_trace.y.concat(mesh_trace.y);
+            var zValues = mesh_trace.z.concat(mesh_trace.z);
+
+            var xRange = [Math.min(...xValues) - extend, Math.max(...xValues) + extend];
+            var yRange = [Math.min(...yValues) - extend, Math.max(...yValues) + extend];
+            var zRange = [Math.min(...zValues) - extend, Math.max(...zValues) + extend];
+
+            layoutMesh.scene.xaxis.range = xRange;
+            layoutMesh.scene.yaxis.range = yRange;
+            layoutMesh.scene.zaxis.range = zRange;
+          
+              Plotly.newPlot('plot2', traces, layoutSlice);
+              //Plotly.react('plot1', [mesh_trace, joint_trace, plane_trace], layoutMesh);
+
+          }
+      })
+  });
+  
+  
+  
+  
+  });
+  
+  function create_plane(center, normal) {
+    var size = 1;  
+    
+    // Calculate the dot product
+    var d = -center[0]*normal[0] - center[1]*normal[1] - center[2]*normal[2];
+    
+
+    // Create a grid of points in the XY plane
+    var x = [];
+    var y = [];
+    var z = [];
+    
+    for (var i = 0; i <= size; i++) {
+        var xRow = [];
+        var yRow = [];
+        var zRow = [];
+        for (var j = 0; j <= size; j++) {
+            var xx = center[0] - size/2 + i;
+            var yy = center[1] - size/2 + j;
+            var zz = (-normal[0]*xx - normal[1]*yy - d) / normal[2];
+           
+            xRow.push(xx);
+            yRow.push(yy);
+            zRow.push(zz);
+        }
+        x.push(xRow);
+        y.push(yRow);
+        z.push(zRow);
+    }
+
+   
+        
+    
+    
+
+    // Create a surface trace for the points
+    var plane = {
+        type: 'surface',
+        x: x,
+        y: y,
+        z: z,
+        color: 'red',
+        opacity: 0.5
+    };
+
+    // Plot the plane
+    return plane;
+}
+
+
+      </script>
+     </div>
+    </div>
+   </body>
+  </html>

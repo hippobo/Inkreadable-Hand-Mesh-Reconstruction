@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Calibration Page</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js">
+    </script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js">
+    </script>
+ <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-4bw+/aepP/YC94hEpVNVgiZdgIC5+VKNBQNGCHeKRQN+PtmoHDEXuppvnDJzQIu9" crossorigin="anonymous">
+ <style>
+  
+
+    .custom-button {
+        font-size: 30px;
+        padding: 10px 20px; 
+        margin: 30px; 
+    }
+</style>
+</head>
+<body>
+   
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js" integrity="sha384-HwwvtgBNo3bZJJLYd8oVXjrBZt8cqVSpeBNS5n7C8IVInixGAoxmnlMuBnhbgrkm" crossorigin="anonymous"></script>
+
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">Home</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/calibration">Calibration</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/mesh_rendering">Rendering</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+    
+
+
+    <div class="container row">
+        <img id="video" src=""/>
+        <strong>
+         Take pictures of chessboard
+        </strong>
+        <button class="btn btn-primary mb-3 custom-button" id="startDetectionButton" onclick="startStream()">
+         Open Camera
+        </button>
+        <button class="btn btn-primary mb-3 custom-button" disabled="" id="stopDetectionButton" onclick="stopStream()">
+         Close Camera
+        </button>
+        <br/>
+        <br/>
+        <strong>
+         Upload Multiple Chess Board Pictures
+        </strong>
+        <form class="mb-3" id="uploadForm">
+            <input class="form-control" id="imageUpload" name="images" type="file" multiple/>
+            <div id="spinner" class="spinner-border text-primary" role="status" style="display: none;">
+                <span class="sr-only">Uploading...</span>
+            </div>
+            <button class="btn btn-primary mb-3 custom-button" id="submitButton" type="submit">
+                Upload
+            </button>
+            <span id="uploadStatus"></span>
+        </form>
+        
+      
+         <script>
+    document.getElementById("uploadForm").addEventListener("submit", function(event) {
+    event.preventDefault();
+    
+    var formData = new FormData();
+    var files = document.getElementById("imageUpload").files;
+    for (var i = 0; i < files.length; i++) {
+        formData.append("chessboard_images", files[i]);
+    }
+
+    document.getElementById("spinner").style.display = "block";
+    document.getElementById("submitButton").style.display = "none";
+
+    fetch("/upload_folder", {
+        method: "POST",
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log(data);
+        document.getElementById("uploadStatus").innerText = data.message;
+        document.getElementById("spinner").style.display = "none";
+        document.getElementById("submitButton").style.display = "block";
+    });
+});
+
+     
+     function startStream() {
+             var video = document.getElementById('video');
+             video.src = "{{ url_for('video_feed_calibration') }}";
+             document.getElementById("startDetectionButton").disabled = true;
+             document.getElementById("stopDetectionButton").disabled = false;
+         }
+     
+         function stopStream() {
+             var video = document.getElementById('video');
+             video.src = "";
+             document.getElementById("startDetectionButton").disabled = false;
+             document.getElementById("stopDetectionButton").disabled = true;
+   
+     
+         }
+    
+      
+   
+         </script>
+       
+      </body>
+     </html>
+
+    
+   
