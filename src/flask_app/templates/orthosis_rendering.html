@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Orthosis STL Generator</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js">
+    </script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js">
+    </script>
+ <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-4bw+/aepP/YC94hEpVNVgiZdgIC5+VKNBQNGCHeKRQN+PtmoHDEXuppvnDJzQIu9" crossorigin="anonymous">
+ 
+</head>
+<body>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js" integrity="sha384-HwwvtgBNo3bZJJLYd8oVXjrBZt8cqVSpeBNS5n7C8IVInixGAoxmnlMuBnhbgrkm" crossorigin="anonymous"></script>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">Home</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/calibration">Calibration</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/mesh_rendering">Mesh Rendering</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/orthosis_rendering">Orthosis Rendering</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+    <br/>
+    <button class="btn btn-primary mb-3 custom-button" id="renderSTLButton">
+        Render STL
+    </button>
+
+
+    
+    
+    <div id="stlPlot"></div>
+
+    <a id="downloadLink" href="#" class="btn btn-primary mb-3 custom-button" download="file.stl" style="display: none;">Download STL</a>
+
+    
+    
+    <script>
+document.getElementById("renderSTLButton").addEventListener("click", function() {
+    fetch("/render_orthosis")
+    .then(response => response.json())
+    .then(data => {
+        console.log(data);
+        
+        var i, j, k;
+
+        i = data.faces.map(face => face[0]);
+        j = data.faces.map(face => face[1]);
+        k = data.faces.map(face => face[2]);
+
+        var trace = {
+            type: 'mesh3d',
+            x: data.vertices.map(vertex => vertex[0]),
+            y: data.vertices.map(vertex => vertex[1]),
+            z: data.vertices.map(vertex => vertex[2]),
+            i: i,
+            j: j,
+            k: k,
+            color: 'lightpink',
+            opacity: 0.50
+        };
+
+        var layout = {
+            title: 'Writing Orthosis',
+            autosize: true,
+            scene: {
+                xaxis: {
+                    range: [Math.min(...trace.x), Math.max(...trace.x)]
+                },
+                yaxis: {
+                    range: [Math.min(...trace.y), Math.max(...trace.y)]
+                },
+                zaxis: {
+                    range: [Math.min(...trace.z), Math.max(...trace.z)]
+                },
+                camera: {
+                    eye: {x: 1, y: 1, z: 1}
+                }
+            }
+        };
+
+        Plotly.newPlot('stlPlot', [trace], layout);
+
+        var downloadLink = document.getElementById('downloadLink');
+        downloadLink.href = '/stl';  
+        downloadLink.style.display = 'block'; 
+    });
+});
+
+    
+    </script>
+
+      
+</body>
+</html>
+    
+   

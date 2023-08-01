@@ -41,7 +41,7 @@ from src.utils.metric_logger import AverageMeter
 from src.utils.metric_pampjpe import reconstruction_error
 from src.utils.geometric_layers import orthographic_projection
 from src.flask_app.visualization_flask import  run_hand_detection, run_hand_detection_fp, get_joints, run_chessboard_detection
-from src.flask_app.rendering_flask import render_mesh_trimesh, render_flask
+from src.flask_app.rendering_flask import render_mesh_trimesh, render_flask, run_blender
 from src.utils.camera_calibration import calibrate
 from src.flask_app.processing_flask import normalize_vertices_and_joints,uv_to_xy,detect_mediapipe_2d, mediapipe_error_minimize_scalar, get_joint_angles, run_inference
 from werkzeug.utils import secure_filename
@@ -67,6 +67,7 @@ import pyrender
 from shapelysmooth import taubin_smooth
 from threading import Thread
 import plotly.graph_objs as go
+from flask import send_from_directory, url_for
 
 if torch.cuda.is_available():
     print("Using GPU", torch.cuda.is_available())
@@ -194,6 +195,33 @@ def upload_image():
 
     return jsonify({"message": "Image uploaded and processed successfully"})
 
+@app.route("/render_orthosis")
+def render_orthosis():
+    thread = Thread(target=run_blender)
+    thread.start()
+
+    thread.join()
+
+    # Load the STL file
+    your_mesh = trimesh.load_mesh('./src/utils/Inkredable/out/default.STL')
+
+    # Convert the mesh data to JSON
+    data = {
+        "vertices": your_mesh.vertices.tolist(),
+        "faces": your_mesh.faces.tolist(),
+        "normals": your_mesh.face_normals.tolist(),
+        "stl_path": url_for('download_stl', _external=True)  
+    }
+
+    return jsonify(data)  # Use jsonify to return a response with the application/json mimetype
+
+
+@app.route('/stl', methods=['GET', 'POST']) 
+def download_stl():
+    directory = "/home/hippolyte/Desktop/graphormer/MeshGraphormer/src/utils/Inkredable/out/"
+    filename = "default.STL"
+    return send_from_directory(directory, filename, as_attachment=True)
+
 
 
 @app.route("/upload_folder", methods=["POST"])
@@ -258,6 +286,13 @@ def data():
         "joints": joints.tolist(),
         "zip_joint_names": {str(k): v.tolist() for k, v in zip_joint_names.items()}
     })
+
+
+@app.route('/orthosis_rendering')
+def orthosis_render():
+    return render_template('orthosis_rendering.html')
+
+
 
 @app.route('/predict', methods=['POST'])
 def predict(args):

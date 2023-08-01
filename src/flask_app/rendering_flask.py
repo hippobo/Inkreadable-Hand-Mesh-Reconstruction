@@ -273,7 +273,7 @@ def render_flask():
  
 def run_blender():
     
-    blend_file_path = " src/utils/Inkredable/scripts/empty.blend"
+    blend_file_path = "src/utils/Inkredable/scripts/empty.blend"
     blender_file_path = "Blender/blender-2.82-linux64/blender"
     script_file_path = "src/utils/Inkredable/scripts/Inkredable.py"
 
