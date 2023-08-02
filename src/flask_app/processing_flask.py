@@ -32,8 +32,10 @@ def run_inference(image_list, Graphormer_model, mano, mesh_sampler):
     
     Graphormer_model.eval()
     mano.eval()
+    
     with torch.no_grad():
         for image_file in image_list:
+            
             if 'pred' not in image_file:
                 att_all = []
                 print(image_file)

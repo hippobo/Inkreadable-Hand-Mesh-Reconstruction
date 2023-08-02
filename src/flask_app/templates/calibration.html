@@ -52,9 +52,14 @@
         <button class="btn btn-primary mb-3 custom-button" id="startDetectionButton" onclick="startStream()">
          Open Camera
         </button>
-        <button class="btn btn-primary mb-3 custom-button" disabled="" id="stopDetectionButton" onclick="stopStream()">
-         Close Camera
+        <button class="btn btn-primary mb-3 custom-button" style="display: none;" id="closeCameraButton" onclick="stopCamera()">
+        Close Camera
+           </button>
+        <button class="btn btn-primary mb-3 custom-button" style="display: none;" id="stopDetectionButton" onclick="stopStream()">
+        Calibrate
         </button>
+
+        <p id="calibStatus" style="display: none;"></p>
         <br/>
         <br/>
         <strong>
@@ -73,11 +78,20 @@
         
       
          <script>
-    document.getElementById("uploadForm").addEventListener("submit", function(event) {
+document.getElementById("uploadForm").addEventListener("submit", function(event) {
     event.preventDefault();
-    
+
     var formData = new FormData();
     var files = document.getElementById("imageUpload").files;
+    if (files.length === 0) {
+        let calibStatus = document.getElementById('calibStatus');
+        calibStatus.innerHTML = "No files selected!";
+        calibStatus.style.display = 'block';
+        calibStatus.style.color = 'red'; 
+        calibStatus.style.fontSize = '30px'; 
+        return;
+    }
+
     for (var i = 0; i < files.length; i++) {
         formData.append("chessboard_images", files[i]);
     }
@@ -85,37 +99,39 @@
     document.getElementById("spinner").style.display = "block";
     document.getElementById("submitButton").style.display = "none";
 
-    fetch("/upload_folder", {
+    fetch("/upload_images_calibration", {
         method: "POST",
         body: formData
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            // Error handling for file upload
+            return response.json().then(err => { throw err; });
+        }
+        return response.json();
+    })
     .then(data => {
         console.log(data);
-        document.getElementById("uploadStatus").innerText = data.message;
+        let uploadStatus = document.getElementById("uploadStatus");
+        uploadStatus.innerText = data.message;
+        uploadStatus.style.color = 'green';
+        uploadStatus.style.fontSize = '30px';
+        document.getElementById("spinner").style.display = "none";
+        document.getElementById("submitButton").style.display = "block";
+    })
+    .catch(error => {
+        // Display error message
+        let calibStatus = document.getElementById('calibStatus');
+        calibStatus.innerHTML = 'Error during file upload: ' + (error.message || 'Unknown error');
+        calibStatus.style.color = "red";
+        calibStatus.style.display = "block";
+        calibStatus.style.fontSize = '30px'; 
+
+        // If the upload fails, stop the spinner and allow the user to try again
         document.getElementById("spinner").style.display = "none";
         document.getElementById("submitButton").style.display = "block";
     });
 });
-
-     
-     function startStream() {
-             var video = document.getElementById('video');
-             video.src = "{{ url_for('video_feed_calibration') }}";
-             document.getElementById("startDetectionButton").disabled = true;
-             document.getElementById("stopDetectionButton").disabled = false;
-         }
-     
-         function stopStream() {
-             var video = document.getElementById('video');
-             video.src = "";
-             document.getElementById("startDetectionButton").disabled = false;
-             document.getElementById("stopDetectionButton").disabled = true;
-   
-     
-         }
-    
-      
    
          </script>
        

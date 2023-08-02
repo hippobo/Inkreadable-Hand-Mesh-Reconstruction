@@ -84,6 +84,9 @@
      <button class="btn btn-primary mb-3 custom-button" id="startPredictionButton" style="display: none;">
       Render Mesh
      </button>
+
+     <p id="errorMessage" style="color: red;" size=""></p>
+
      <br/>
      <br/>
      <strong>
@@ -155,27 +158,36 @@ var layoutMesh = {
         }
     }
 };
+document.getElementById("uploadForm").addEventListener("submit", function(event) {
+    event.preventDefault();
+      
+    var formData = new FormData();
+    formData.append("image", document.getElementById("imageUpload").files[0]);
 
-       document.getElementById("uploadForm").addEventListener("submit", function(event) {
-      event.preventDefault();
-        
-      var formData = new FormData();
-      formData.append("image", document.getElementById("imageUpload").files[0]);
-  
-      fetch("/upload_image", {
-          method: "POST",
-          body: formData
-      })
-      .then(response => response.json())
-      .then(data => {
-          console.log(data);
+    fetch("/upload_image", {
+        method: "POST",
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log(data);
 
-        document.getElementById("uploadStatus").innerText = data.message;
+        let uploadStatus = document.getElementById("uploadStatus");
+        uploadStatus.innerText = data.message;
+        uploadStatus.style.fontSize = "20px";
+
+        // Check if the message indicates successful processing
+        if (data.message === "Image uploaded and processed successfully") {
+            uploadStatus.style.color = "green";  // Success color
+        } else {
+            uploadStatus.style.color = "red";  // Error color
+        }
+
         $("#startPredictionButton").show();
 
-      });
-  });
-  
+    });
+});
+
   function startStream() {
           var video = document.getElementById('video');
           video.src = "{{ url_for('video_feed_hand_detection') }}";
@@ -255,23 +267,32 @@ let mesh_vizualization;
       });
   
       $("#startPredictionButton").click(function() {
-        $("#loadingSpinner").show();
-          fetch('/start_prediction')
-          
+    $("#loadingSpinner").show();
+    fetch('/start_prediction')
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                console.error(data.error);
+                document.getElementById('errorMessage').textContent = data.error;  // Display the error to the user
+                $("#loadingSpinner").hide();  // Hide the spinner when an error occurs
+            } else {
+                console.log(data.message);
+                if(data.message == "Done") {
+                    document.getElementById('errorMessage').textContent = '';  // Clear any previous error messages
+                    $("#loadingSpinner").hide();  // Hide the spinner when prediction is done
+                    fetchData();
+                    document.getElementById('radioButtons').style.display = 'block';
+                    document.getElementById('slider').style.display = 'block';
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('errorMessage').textContent = 'An unexpected error occurred. Please try again.';  // Display a generic error message
+            $("#loadingSpinner").hide();  // Hide the spinner when an error occurs
+        });
+});
 
-              .then(response => response.json())
-              .then(data => {
-                  // Handle the response from the server
-                  console.log(data.message);
-                  
-                  if(data.message == "Done") {
-                        $("#loadingSpinner").hide(); // Hide the spinner after the AJAX request is done
-                      fetchData();
-                      document.getElementById('radioButtons').style.display = 'block';
-                      document.getElementById('slider').style.display = 'block';
-                  }
-              });
-      });
       document.getElementById('jointForm').addEventListener('change', function() {
       var labelName = document.querySelector('input[name="joint"]:checked').value;
   

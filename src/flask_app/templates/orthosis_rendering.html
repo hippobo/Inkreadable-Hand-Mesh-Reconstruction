@@ -33,7 +33,8 @@
         </div>
     </nav>
     <br/>
-    <button class="btn btn-primary mb-3 custom-button" id="renderSTLButton">
+    <input type="text" id="username" placeholder="Enter your name">
+    <button class="btn btn-primary mb-3 custom-button" id="renderSTLButton" >
         Render STL
     </button>
 
@@ -42,7 +43,7 @@
     
     <div id="stlPlot"></div>
 
-    <a id="downloadLink" href="#" class="btn btn-primary mb-3 custom-button" download="file.stl" style="display: none;">Download STL</a>
+    <a id ="downloadLink" class="btn btn-success" href="{{url_for('download_stl')}}"  style="display: none;" >Download STL </a>
 
     
     
@@ -68,11 +69,11 @@ document.getElementById("renderSTLButton").addEventListener("click", function() 
             j: j,
             k: k,
             color: 'lightpink',
-            opacity: 0.50
+            opacity: 0.75
         };
 
         var layout = {
-            title: 'Writing Orthosis',
+            title: 'Your Writing Orthosis',
             autosize: true,
             scene: {
                 xaxis: {
@@ -92,8 +93,9 @@ document.getElementById("renderSTLButton").addEventListener("click", function() 
 
         Plotly.newPlot('stlPlot', [trace], layout);
 
+        var username = document.getElementById('username').value;
         var downloadLink = document.getElementById('downloadLink');
-        downloadLink.href = '/stl';  
+    downloadLink.href = '/download_stl?username=' + encodeURIComponent(username)
         downloadLink.style.display = 'block'; 
     });
 });

@@ -1,15 +1,16 @@
 # Hand Mesh Reconstruction for Inkredable
 
 
-This project is a tool built on Microsoft's open-source mesh reconstruction repo, [Mesh Graphormer](https://github.com/microsoft/MeshGraphormer), to recreate the placement of the user's hand in 3D space and find the corresponding dimensions of his fingers. An orthosis is then generated as a 3D-printable STL file for writing purposes. As for now, the measurements from the mesh reconstruction can be inputted on [this website](https://project.inria.fr/humanlabinria/fr/inkredable/) to generate an STL file. 
+This project is a tool built using Microsoft's open-source mesh reconstruction repo, [Mesh Graphormer](https://github.com/microsoft/MeshGraphormer). MeshGraphormer uses 224x224 images of centered hands to render hand meshes. Using the mesh and camera information, we recreate the placement of the user's hand in 3D space and find the corresponding dimensions of his fingers. An orthosis is then generated as a 3D-printable STL file for writing purposes. 
 
-<img src="docs/orthese3.jpeg" height =200 width="400"> 
+<img src="docs/orthese3.jpeg" height =200 width="353"> 
 <img src="docs/meshvsimage.png" height =200 width="400">
+
 
 
 The paper for Microsoft's graphormer can be found [here](https://arxiv.org/abs/2104.00272).
 
-The goal of this project was to create an open-source tool usable by people with just an rgb webcam and a reference point. We wanted to make it possible for people that had trouble writing, including people with disabilities, to be able to print a simple orthosis.
+The goal of this project was to create an open-source tool usable by people with just an rgb webcam and a reference point. We wanted to make it possible for people that had trouble writing, including people with d   isabilities, to be able to print a simple orthosis.
 
 <img src="docs/orthese2.jpeg" hwidth="200"> 
 
@@ -152,7 +153,22 @@ Output :
 <img src="docs/gif1.gif" width=350 > <img src="docs/gif2.gif" width=350 >
 
 
-### Flask webapp 
+## Flask webapp 
+
+
+
+To run the webapp locally, run :
+```python
+python src/flask_app/app.py
+```
+
+1. Before running inference, click the "Calibration" button on the webapp. Print out this OpenCV chessboard from [here](https://visp-doc.inria.fr/download/calib-grid/OpenCV_Chessboard.pdf) and tape it on to a flat surface like a piece of cardboard. Click "Open Camera" and follow instructions.
+
+
+2. To start running inference, you can choose to either automatically take a picture, of your hand laying on the table next to a 2 euro coin, or choose your own picture. To take the picture, place your camera parallel to the surface on which you place your hand. Open the camera and wait until both your hand and coin are detected. A message should appear saying a picture was taken. You can now click "Render Mesh". This could take some time. You can now see your rendered 3D mesh and slices. Measurements are automatically taken.
+
+3. To Download your STL, go to the "Orthosis Rendering" tab and enter your name. Once the orthosis is rendered, you can download it and print it using the slicer and printer of your choice ! 
+
 
 Calibration with OpenCV Chessboard
 
@@ -169,12 +185,9 @@ Hand Mesh rendering and slicing
 <img src="docs/flaskapp3.gif"  >
 
 
+Custom STL File Rendering and Download
+
+<img src="docs/flaskapp4.png"  >
 
 
-To run the webapp locally, run :
-```python
-python src/flask_app/app.py
-```
 
-
-You can choose to either automatically take a picture, of your hand laying on the table next to a 2 euro coin, or choose your own picture. To take the picture, place your camera parallel to the surface on which you place your hand. 

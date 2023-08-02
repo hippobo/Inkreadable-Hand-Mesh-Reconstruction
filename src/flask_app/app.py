@@ -1,16 +1,18 @@
 from __future__ import absolute_import, division, print_function
 
-from flask import Flask, request, render_template, jsonify, Response
+from flask import Flask, request, render_template, jsonify, Response, send_file
 
 from src.utils.visualization import  run_hand_detection, run_hand_detection_fp
 from src.utils.rendering import render_mesh_trimesh
-   
-from src.utils.processing import normalize_vertices_and_joints,uv_to_xy,detect_mediapipe_2d, mediapipe_error_minimize_scalar, get_joint_angles
 
+import statistics
+from src.utils.processing import normalize_vertices_and_joints,uv_to_xy,detect_mediapipe_2d, mediapipe_error_minimize_scalar, get_joint_angles
+import traceback
 import subprocess
 import shlex
 import argparse
 import os
+import glob
 import os.path as op
 import code
 import json
@@ -58,6 +60,8 @@ from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from matplotlib.widgets import Slider, RadioButtons 
 import shapely
+from shapely.geometry import Point
+
 from torch.nn.functional import normalize
 from scipy.optimize import least_squares, minimize, minimize_scalar, basinhopping
 from scipy.spatial import cKDTree
@@ -67,7 +71,7 @@ import pyrender
 from shapelysmooth import taubin_smooth
 from threading import Thread
 import plotly.graph_objs as go
-from flask import send_from_directory, url_for
+
 
 if torch.cuda.is_available():
     print("Using GPU", torch.cuda.is_available())
@@ -178,21 +182,50 @@ def current_page():
     return render_template('mesh_rendering.html')
 
 
+
+@app.route('/download_stl')
+def download_stl():
+    username = request.args.get('username', default='default', type=str)
+    if username == "":
+        username = "writing"
+    path = 'Inkredable/out/default.STL'
+    return send_file(path, as_attachment=True, download_name=f'{username}_orthosis.STL')
+
 @app.route("/upload_image", methods=["POST"])
 def upload_image():
+    directories = ['./samples/hand_uncropped/*', './samples/hand_cropped/*', './samples/hand_info_export/*', './samples/hand_rendered/*']
+
+
+    for directory in directories:
+        files = glob.glob(directory)
+        for f in files:
+            os.remove(f)
+
     image = request.files["image"]
-    #points = json.loads(request.form.get('points'))  # Get the points selected by the user
-
-    filename = secure_filename(image.filename)
-    image_path = os.path.join("./samples/hand_uncropped/", filename)
-    image.save(image_path)
     
-    # Pass the points to your function
-    thread = Thread(target=run_hand_detection_fp(image_path))
-    thread.start()
+    
+    if image and allowed_file(image.filename):
+        filename = secure_filename(image.filename)
+        image_path = os.path.join("./samples/hand_uncropped/", filename)
+        
+        image.save(image_path)
+        
+    
+                
+    else:
+        return jsonify({"message": "Invalid file format - only images are allowed"}), 400
+        
+        
+    
 
-    thread.join()
+    try:
+        thread = Thread(target=run_hand_detection_fp(image_path))
+        thread.start()
 
+        thread.join()
+    except Exception as e:
+        print(e)
+        return jsonify({"message": "Error processing image - No hand/Coin found"}), 500
     return jsonify({"message": "Image uploaded and processed successfully"})
 
 @app.route("/render_orthosis")
@@ -203,64 +236,82 @@ def render_orthosis():
     thread.join()
 
     # Load the STL file
-    your_mesh = trimesh.load_mesh('./src/utils/Inkredable/out/default.STL')
+    your_mesh = trimesh.load_mesh('./src/flask_app/Inkredable/out/default.STL')
 
     # Convert the mesh data to JSON
     data = {
         "vertices": your_mesh.vertices.tolist(),
         "faces": your_mesh.faces.tolist(),
         "normals": your_mesh.face_normals.tolist(),
-        "stl_path": url_for('download_stl', _external=True)  
+        
     }
 
     return jsonify(data)  # Use jsonify to return a response with the application/json mimetype
 
+def allowed_file(filename):
+    ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-@app.route('/stl', methods=['GET', 'POST']) 
-def download_stl():
-    directory = "/home/hippolyte/Desktop/graphormer/MeshGraphormer/src/utils/Inkredable/out/"
-    filename = "default.STL"
-    return send_from_directory(directory, filename, as_attachment=True)
-
-
-
-@app.route("/upload_folder", methods=["POST"])
-def upload_images():
-    files = request.files.getlist("chessboard_images")
-    for image in files:
-        filename = secure_filename(image.filename)
-        image_path = os.path.join("./samples/Chessboard_Images", filename)
-        image.save(image_path)
+@app.route("/upload_images_calibration", methods=["POST"])
+def upload_images_calib():
+    files = glob.glob('./samples/Chessboard_Images/*')
+    for f in files:
+        os.remove(f)
+    try:
+        files = request.files.getlist("chessboard_images")
+        for image in files:
+            if image and allowed_file(image.filename):
+                filename = secure_filename(image.filename)
+                image_path = os.path.join("./samples/Chessboard_Images", filename)
+                image.save(image_path)
+            else:
+                return jsonify({"message": "Invalid file format - only images are allowed"}), 400
+        
+        ret, mtx, dist, rvecs, tvecs = calibrate('./samples/Chessboard_Images/',0.024, 9,6)
+        np.save("./samples/camera_params/camera_matrix", mtx)
+        np.save("./samples/camera_params/distortion_coefficients", dist)
+        np.save("./samples/camera_params/rvecs", rvecs)
+        np.save("./samples/camera_params/tvecs", tvecs)
+        np.save("./samples/camera_params/dist", dist)
     
-     # ret, mtx, dist, rvecs, tvecs = calibrate('./samples/Chessboard_Images/',0.024, 9,6)
+        return jsonify({"message":  "Images uploaded successfully - Calibration Done"})
+    
+    except Exception as e:
+        files = glob.glob('./samples/Chessboard_Images/*')  # get all files
+        for f in files:
+            os.remove(f)  # remove each file
+        traceback.print_exc()  # This will print the traceback to the console, which is useful for debugging
+        return jsonify({"message": f"{str(e)} - Please check chessboard format/visibility"}), 500
 
 
-    # np.save("./samples/camera_params/camera_matrix", mtx)
-    # np.save("./samples/camera_params/distortion_coefficients", dist)
-    # np.save("./samples/camera_params/rvecs", rvecs)
-    # np.save("./samples/camera_params/tvecs", tvecs)
-    # np.save("./samples/camera_params/dist", dist)
-
-    # print("Camera Calibration Done")
-
-
-    return jsonify({"message":  "Images uploaded successfully"})
+      
+picture_status = "" 
 
 @app.route("/start_hand_detection")
 def start_hand_detection():
+    global picture_status
     thread = Thread(target=run_hand_detection)
     thread.start()
-
     thread.join()
-
+    picture_status = "Picture taken - ready to render"
     return jsonify({"message": "Done"})
+
+@app.route("/get_picture_status")
+def get_picture_status():
+    global picture_status
+    print("pic stat",picture_status)
+    return jsonify({"status": picture_status})
 
 @app.route("/start_prediction")
 def start_prediction():
-    args = parse_args()
-    predict(args)
-   
-    return jsonify({"message": "Done"})
+    try:
+        args = parse_args()
+        predict(args)
+        return jsonify({"message": "Done"})
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 500
+
 
 @app.route('/data')
 def data():
@@ -424,15 +475,24 @@ def predict(args):
         for filename in os.listdir(args.image_file_or_path):
             if filename.endswith(".png") or filename.endswith(".jpg") and 'pred' not in filename:
                 image_list.append(args.image_file_or_path+'/'+filename) 
+
     else:
         raise ValueError("Cannot find images at {}".format(args.image_file_or_path))
 
+    if (len(image_list) ==0):
+        raise ValueError("No Hand Image found - Please Retake Picture")
     run_inference(image_list, _model, mano_model, mesh_sampler)
 
     render_flask()
 
     return jsonify({"message": "Done"})
 
+@app.route('/count_images', methods=['GET'])
+def count_images():
+    import os
+    img_dir = './samples/Chessboard_Images'
+    num_files = len([f for f in os.listdir(img_dir) if os.path.isfile(os.path.join(img_dir, f))])
+    return {'count': num_files}
 
 
 
@@ -446,6 +506,7 @@ def video_feed_hand_detection():
 def video_feed_calibration():
     return Response(run_chessboard_detection(),
                     mimetype='multipart/x-mixed-replace; boundary=frame')
+
 
 
 @app.route('/calculate_slices', methods=['POST'])
@@ -487,10 +548,63 @@ def calculate_slices():
     return jsonify(normalVector=normal_json, multi_slices=multi_slices_json, planeCenters=center_array)
 
 
+def get_measurements():
+
+    chosen_joints = ['Thumb_2' ,'Thumb_3','Thumb_3', 'Thumb_4','Index_2', 'Index_3','Index_3', 'Index_4']
+    joint_names = ['Wrist', 'Thumb_1', 'Thumb_2', 'Thumb_3', 'Thumb_4', 'Index_1', 'Index_2', 'Index_3', 'Index_4', 'Middle_1', 'Middle_2', 'Middle_3', 'Middle_4', 'Ring_1', 'Ring_2', 'Ring_3', 'Ring_4', 'Pinky_1', 'Pinky_2', 'Pinky_3', 'Pinky_4']
+
+    vertices = np.load("./samples/hand_info_export/hand_verts.npy")
+    faces = np.load("./samples/hand_info_export/hand_faces.npy")
+    joints = np.load("./samples/hand_info_export/hand_joints.npy")
+
+    zip_joint_names = dict(zip(joint_names, joints))
+
+
+    #create Trimesh Object
+    mesh_vizualization = trimesh.Trimesh(vertices=vertices, faces=faces)
+    
+    normals = [np.array(zip_joint_names[chosen_joints[i+1]]) - np.array(zip_joint_names[chosen_joints[i]]) for i in range(0, len(chosen_joints), 2)]
+
+
+    fixed_center = [zip_joint_names[chosen_joints[i]] for i in range(0, len(chosen_joints), 2)]
+    heights = [np.linspace(0.0, np.linalg.norm(normal), 100) for normal in normals]
+    
+    
+    multi_slices = [mesh_vizualization.section_multiplane(plane_origin=i, 
+                                                         plane_normal=j, heights=k) for i, j, k in zip(fixed_center, normals, heights)]
+    
+    slice_polygons = []
+    for multislice in multi_slices:
+        for slice in multislice:
+          
+            slice_polygons.append(shapely.geometry.MultiPolygon([poly for poly in slice.polygons_full]))
+
+    
+
+    origin = Point(0, 0)
+    closest_polygon_lengths = []
+
+    for multi_polygon in slice_polygons:
+        closest_polygon = None
+        min_distance = float('inf')
+        
+        for polygon in multi_polygon.geoms:
+            center = polygon.centroid
+            distance = center.distance(origin)
+            
+            if distance < min_distance:
+                min_distance = distance
+                closest_polygon = polygon
+                
+        closest_polygon_lengths.append(closest_polygon.length * 1000)
+
+        measurement = {'Thumb base' : statistics.mean(closest_polygon_lengths[0:10]), 'Thumb extremity' : statistics.mean(closest_polygon_lengths[95:105]), 'Index Base' : statistics.mean(closest_polygon_lengths[195:205]), 'Index Extremity' : statistics.mean(closest_polygon_lengths[390:400]) }
+
 
 
 if __name__ == "__main__":
-    app.run(debug=False)
+    # app.run(debug=False)
+    get_measurements()
 
 
 

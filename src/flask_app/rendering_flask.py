@@ -158,7 +158,7 @@ def render_flask():
 
     vertices,joints = normalize_vertices_and_joints(vertices,joints) 
 
-    #create Trimesh Object
+    #create Trimesh Object  
     mesh = trimesh.Trimesh(vertices=vertices, faces=faces)
     mesh_vizualization = mesh.copy()
 
@@ -273,9 +273,9 @@ def render_flask():
  
 def run_blender():
     
-    blend_file_path = "src/utils/Inkredable/scripts/empty.blend"
+    blend_file_path = "src/flask_app/Inkredable/scripts/empty.blend"
     blender_file_path = "Blender/blender-2.82-linux64/blender"
-    script_file_path = "src/utils/Inkredable/scripts/Inkredable.py"
+    script_file_path = "src/flask_app/Inkredable/scripts/Inkredable.py"
 
     command = [blender_file_path, "--background", blend_file_path, "--python", script_file_path]
     subprocess.run(command)

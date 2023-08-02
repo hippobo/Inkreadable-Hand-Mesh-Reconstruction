@@ -1,0 +1,15 @@
+[{"Lang":"French"},
+{"Hand":"Right"},
+{
+  "Thumb contour extremity":59.0,
+  "Thumb contour base": 63.0,
+  "Index contour extremity": 43.0,
+  "Index contour base": 47.0,
+  "Height": 15.0,
+  "Pen radius": 4.0,
+  "Thickness": 2.0,
+  "Thumb-Index angle": 60.0,
+  "Index-Ground angle": 22.0,
+  "Interstice height": 3.0
+}
+]

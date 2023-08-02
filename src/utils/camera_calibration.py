@@ -26,7 +26,8 @@ def calibrate(dirpath, square_size, width, height, visualize=False):
     imgpoints = []  # 2d points in image plane.
 
     images = os.listdir(dirpath)
-
+    total_images = len(images)
+    num_chessboards_detected = 0
     for fname in images:
         img = cv2.imread(os.path.join(dirpath, fname))
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -37,12 +38,14 @@ def calibrate(dirpath, square_size, width, height, visualize=False):
         # If found, add object points, image points (after refining them)
         if ret:
             objpoints.append(objp)
+            
 
             corners2 = cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)
             imgpoints.append(corners2)
 
             # Draw and display the corners
             img = cv2.drawChessboardCorners(img, (width, height), corners2, ret)
+            num_chessboards_detected += 1 
             print(f"Chessboard detected in {fname}")
         else:
             print(f"Chessboard not detected in {fname}")
@@ -54,7 +57,9 @@ def calibrate(dirpath, square_size, width, height, visualize=False):
             cv2.imshow('img',img)
             cv2.waitKey(0)
 
-
+    if num_chessboards_detected != total_images:  # If chessboard was not found in any image
+        raise ValueError("Could not find chessboard in all images.")
+    
     ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.shape[::-1], None, None)
 
     return [ret, mtx, dist, rvecs, tvecs]

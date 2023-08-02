@@ -5,6 +5,8 @@ import shapely
 from shapelysmooth import taubin_smooth
 mp_hands = mp.solutions.hands
 import time
+import os
+import glob
 
 from src.utils.camera_calibration import calibrate
 
@@ -78,6 +80,12 @@ def get_available_camera():
 
 
 def run_hand_detection(isLeftHand=False):
+    directories = ['./samples/hand_uncropped/*', './samples/hand_cropped/*', './samples/hand_info_export/*', './samples/hand_rendered/*']
+
+    for directory in directories:
+        files = glob.glob(directory)
+        for f in files:
+            os.remove(f)
     size_crop = 224
     mphands = mp.solutions.hands
     hands = mphands.Hands()
@@ -253,16 +261,8 @@ def run_hand_detection(isLeftHand=False):
 
 
 def run_hand_detection_fp(uncropped_image_file_path,isLeftHand=False):
-    def mouse_click(event, x, y, flags, param):
-        nonlocal points
-        if event == cv2.EVENT_LBUTTONDOWN:
-            points.append((x, y))
-            # Draw a circle at the clicked point
-            if len(points) == 1:
-                cv2.circle(frame_copy, points[0], 5, (0, 255, 0), 3)
-            elif len(points) == 2:
-                radius = int(np.hypot(points[1][0] - points[0][0], points[1][1] - points[0][1]))
-                cv2.circle(frame_copy, points[0], radius, (0, 255, 0), 3)
+    
+
     size_crop = 224
     mphands = mp.solutions.hands
     hands = mphands.Hands()
@@ -311,29 +311,8 @@ def run_hand_detection_fp(uncropped_image_file_path,isLeftHand=False):
                 cv2.circle(frame, center, radius, (255, 0, 255), 3)  # circle outline
             
         else:
-                        
-            not_detected = "No coin detected. Please click on center and perimeter of coin. Press Q to quit"
-            cv2.putText(frame, not_detected, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-            cv2.namedWindow('Image')
-            cv2.setMouseCallback('Image', mouse_click)
-
-            points = []  # to store the points clicked by the user
-            frame_copy = frame.copy()
-
-            while True:
-                cv2.imshow('Image', frame_copy)
-                key = cv2.waitKey(1) & 0xFF
-                if key == ord('q') or len(points) >= 2:
-                    break
-
-            cv2.destroyAllWindows()
-
-            if len(points) < 2:
-                print("Not enough points. Please click on the image again.")
-            else:
-                coin_coords = np.array([points[0][0], points[0][1], np.hypot(points[1][0]-points[0][0], points[1][1]-points[0][1])/2])
-                
- 
+            raise ValueError("Could not find coin/hand in image")
+        
         bbox_width = x_max - x_min
         bbox_height = y_max - y_min
         bbox_max_dim = max(bbox_width, bbox_height)
@@ -417,6 +396,9 @@ def run_hand_detection_fp(uncropped_image_file_path,isLeftHand=False):
   
 def run_chessboard_detection():
 
+    files = glob.glob('./samples/Chessboard_Images/*')
+    for f in files:
+        os.remove(f)
     cap = get_available_camera()
 
     chessboard_size = (9, 6)  # update with your chessboard size
@@ -429,63 +411,72 @@ def run_chessboard_detection():
     picture_status = ""
     stop_detection = False  # flag to stop the detection
 
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
+    try: 
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                break
 
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-        if not stop_detection:
-            ret, corners = cv2.findChessboardCorners(gray, chessboard_size, None)
+            if not stop_detection:
+                ret, corners = cv2.findChessboardCorners(gray, chessboard_size, None)
 
-            if ret:
-                criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
-                refined_corners = cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)
-                cv2.drawChessboardCorners(frame, chessboard_size, refined_corners, ret)
+                if ret:
+                    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
+                    refined_corners = cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)
 
-                if prev_corners is not None:
-                    diff = np.sum((refined_corners - prev_corners) ** 2)
-                    if diff < threshold:
-                        stationary_counter += 1
-                    else:
-                        stationary_counter = 0
+                    # Save a copy of the original frame before drawing on it.
+                    original_frame = frame.copy()
 
-                    if stationary_counter >= s:
-                        picture_status = f"Picture {frame_counter + 1}/10 taken - Tilt chessboard"
-                        cv2.imwrite(f'./samples/Chessboard_Images/chessboard_{frame_counter}.jpg', frame)
-                        frame_counter += 1
-                        stationary_counter = 0
-                        if frame_counter == 10:
-                            stop_detection = True  # stop detection after 10 frames
+                    cv2.drawChessboardCorners(frame, chessboard_size, refined_corners, ret)
 
-                prev_corners = refined_corners  # update prev_corners here
-            else:
-                picture_status = "No chessboard detected"
+                    if prev_corners is not None:
+                        diff = np.sum((refined_corners - prev_corners) ** 2)
+                        if diff < threshold:
+                            stationary_counter += 1
+                        else:
+                            stationary_counter = 0
 
-            if (stop_detection and frame_counter == 10):
-                picture_status = "Finished taking pictures"
-        cv2.putText(frame, picture_status, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-        ret, buffer = cv2.imencode('.jpg', frame)
-        frame = buffer.tobytes()
-        yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+                        if stationary_counter >= s:
+                            picture_status = f"Picture {frame_counter + 1}/10 taken - Tilt chessboard"
 
-        if time.time() - prev_time > 10 and not stop_detection:
-            print("No chessboard detected for 10 seconds. Stopping detection...")
-            stop_detection = True
-        prev_time = time.time()
+                            # Save the original frame, not the one with the drawn corners.
+                            cv2.imwrite(f'./samples/Chessboard_Images/chessboard_{frame_counter}.jpg', original_frame)
 
-    # ret, mtx, dist, rvecs, tvecs = calibrate('./samples/Chessboard_Images/',0.024, 9,6)
+                            frame_counter += 1
+                            stationary_counter = 0
+                            if frame_counter == 10:
+                                stop_detection = True  # stop detection after 10 frames
 
+                    prev_corners = refined_corners  # update prev_corners here
+                else:
+                    picture_status = "No chessboard detected"
 
-    # np.save("./samples/camera_params/camera_matrix", mtx)
-    # np.save("./samples/camera_params/distortion_coefficients", dist)
-    # np.save("./samples/camera_params/rvecs", rvecs)
-    # np.save("./samples/camera_params/tvecs", tvecs)
-    # np.save("./samples/camera_params/dist", dist)
+                if (stop_detection and frame_counter == 10):
+                    picture_status = "Click calibrate to finalize calibration"
 
-    # print("Camera Calibration Done")
+            cv2.putText(frame, picture_status, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+            ret, buffer = cv2.imencode('.jpg', frame)
+            frame = buffer.tobytes()
+            yield (b'--frame\r\n'
+                b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
 
-    cap.release()
-   
+            if time.time() - prev_time > 10 and not stop_detection:
+                print("No chessboard detected for 10 seconds. Stopping detection...")
+                stop_detection = True
+            prev_time = time.time()
+
+    finally: 
+        cap.release()
+    
+
+        _, mtx, dist, rvecs, tvecs = calibrate('./samples/Chessboard_Images/',0.024, 9,6)
+
+        print("Calibration Done ")
+        np.save("./samples/camera_params/camera_matrix", mtx)
+        np.save("./samples/camera_params/distortion_coefficients", dist)
+        np.save("./samples/camera_params/rvecs", rvecs)
+        np.save("./samples/camera_params/tvecs", tvecs)
+        np.save("./samples/camera_params/dist", dist)
+
