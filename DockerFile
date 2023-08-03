@@ -1,0 +1,54 @@
+# Use an official Python runtime as a parent image
+FROM nvidia/cuda:11.7-cudnn8-runtime-ubuntu20.04
+
+# Set the working directory in the container to /app
+WORKDIR /app
+
+# Copy the current directory contents into the container at /app
+COPY . /app
+
+# Install any needed packages specified in requirements.txt
+RUN apt-get update && apt-get install -y \
+    python3.7 \
+    python3-pip
+
+# Install pip packages
+RUN pip3 install --upgrade pip && \
+    pip3 install torch==1.13.0+cu117 torchvision==0.14.0+cu117 torchaudio==0.13.0 --extra-index-url https://download.pytorch.org/whl/cu117 && \
+    pip3 install -r requirements.txt
+
+# Clone and install apex
+RUN git clone https://github.com/ptrblck/apex.git && \
+    cd apex && \
+    python3 setup.py install --cuda_ext --cpp_ext
+
+# Clone and install MeshGraphormer
+RUN git clone --recursive git@github.com:hippobo/Inkreadable-Hand-Mesh-Reconstruction.git && \
+    cd Inkreadable-Hand-Mesh-Reconstruction && \
+    python3 setup.py build develop
+
+# Install manopth
+RUN cd Inkreadable-Hand-Mesh-Reconstruction && \
+    pip3 install ./manopth/.
+
+# Download Blender
+RUN bash scripts/download_blender_linux.sh
+
+# Create models directory
+RUN mkdir -p models
+
+# Download pre-trained models
+RUN bash scripts/download_models.sh
+
+# Expose port for the server
+EXPOSE 8888
+# Set environment variables
+ENV FLASK_APP=app.py
+ENV FLASK_RUN_HOST=0.0.0.0
+
+# Expose port for the Flask web server
+EXPOSE 5000
+
+# Run the application
+CMD ["flask", "run"]
+
