@@ -504,6 +504,10 @@ def video_feed_hand_detection():
 
 @app.route('/video_feed_calibration')
 def video_feed_calibration():
+
+    files = glob.glob('./samples/Chessboard_Images/*')
+    for f in files:
+        os.remove(f)
     return Response(run_chessboard_detection(),
                     mimetype='multipart/x-mixed-replace; boundary=frame')
 

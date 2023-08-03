@@ -132,6 +132,59 @@ document.getElementById("uploadForm").addEventListener("submit", function(event)
         document.getElementById("submitButton").style.display = "block";
     });
 });
+
+
+    
+
+
+function showMessage(text) {
+    var messageElement = document.getElementById('calibStatus');
+    messageElement.textContent = text;
+    messageElement.style.display = 'block';
+    messageElement.style.color = 'green'; 
+    messageElement.style.fontSize = '30px'; 
+}
+function startStream() {
+        
+        var video = document.getElementById('video');
+        video.src = "{{ url_for('video_feed_calibration') }}";
+        document.getElementById("startDetectionButton").disabled = true;
+        document.getElementById("stopDetectionButton").style.display = "none";
+
+        document.getElementById("closeCameraButton").style.display = "block";
+        document.getElementById("closeCameraButton").disabled = false;
+        setTimeout(checkImageCount, 1000);
+
+        
+    }
+function stopCamera(){
+    var video = document.getElementById('video');
+        video.src = "";
+        document.getElementById("startDetectionButton").disabled = false;
+
+}
+    function stopStream() {
+        var video = document.getElementById('video');
+        video.src = "";
+        document.getElementById("startDetectionButton").disabled = false;
+        document.getElementById("stopDetectionButton").disabled = true;
+        showMessage('Calibration Done');
+       
+    }
+
+    function checkImageCount() {
+        fetch('/count_images')
+        .then(response => response.json())
+        .then(data => {
+            if (data.count === 10) {
+                document.getElementById("startDetectionButton").disabled = true;
+                document.getElementById("stopDetectionButton").style.display = "block";
+            } else {
+                document.getElementById("stopDetectionButton").style.display = "none";
+                setTimeout(checkImageCount, 2000);
+            }
+        });
+    }
    
          </script>
        

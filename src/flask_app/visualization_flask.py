@@ -419,9 +419,7 @@ def run_hand_detection_fp(uncropped_image_file_path,isLeftHand=False):
   
 def run_chessboard_detection():
 
-    files = glob.glob('./samples/Chessboard_Images/*')
-    for f in files:
-        os.remove(f)
+  
     cap = get_available_camera()
 
     chessboard_size = (9, 6)  # update with your chessboard size
