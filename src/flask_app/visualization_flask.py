@@ -7,7 +7,7 @@ mp_hands = mp.solutions.hands
 import time
 import os
 import glob
-
+import json
 from src.utils.camera_calibration import calibrate
 
 
@@ -205,18 +205,27 @@ def run_hand_detection(isLeftHand=False):
                     if result.multi_handedness:
                         for hand_handedness in result.multi_handedness:
                             label = hand_handedness.classification[0].label
-                            handedness_status = 'Handedness: {}'.format(label)
-                            print(handedness_status)
-                            
+                            print('Handedness:', label)
                             if (label == "Left"):
                                 isLeftHand = True
-                            else : 
+                            else:
                                 isLeftHand = False
+            
+
+                        with open('./src/flask_app/Inkredable/in/default.json', 'r') as f:
+                            data = json.load(f)
+
+                        data[1]["Hand"] = label
+
+
+                        with open('./src/flask_app/Inkredable/in/default.json', 'w') as f:
+                            json.dump(data, f, indent=3)
                     
                     if isLeftHand:
                         hand_image_resized = cv2.flip(hand_image_resized,1)
                         framergb = cv2.cvtColor(cv2.flip(hand_image_resized,1), cv2.COLOR_BGR2RGB)
                         result = hands.process(framergb)
+                      
                  
                     hand_landmarks = result.multi_hand_landmarks
                     world_landmarks = result.multi_hand_world_landmarks
@@ -343,18 +352,32 @@ def run_hand_detection_fp(uncropped_image_file_path,isLeftHand=False):
         result = hands.process(framergb)
           
         if result.multi_handedness:
-                    for hand_handedness in result.multi_handedness:
-                        label = hand_handedness.classification[0].label
-                        print('Handedness:', label)
-                        if (label == "Left"):
-                            isLeftHand = True
-                        else : 
-                            isLeftHand = False
-        
+                        for hand_handedness in result.multi_handedness:
+                            label = hand_handedness.classification[0].label
+                            print('Handedness:', label)
+                            if (label == "Left"):
+                                isLeftHand = True
+                            else:
+                                isLeftHand = False
+            
+
+                        with open('./src/flask_app/Inkredable/in/default.json', 'r') as f:
+                            data = json.load(f)
+
+                        data[1]["Hand"] = label
+
+
+                        with open('./src/flask_app/Inkredable/in/default.json', 'w') as f:
+                            json.dump(data, f, indent=3)
+                        
         if isLeftHand:
             hand_image_resized = cv2.flip(hand_image_resized,1)
             framergb = cv2.cvtColor(cv2.flip(hand_image_resized,1), cv2.COLOR_BGR2RGB)
             result = hands.process(framergb)
+           
+     
+           
+                
        
 
         hand_landmarks = result.multi_hand_landmarks

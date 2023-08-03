@@ -1,15 +1,20 @@
-[{"Lang":"French"},
-{"Hand":"Right"},
-{
-  "Thumb contour extremity":59.0,
-  "Thumb contour base": 63.0,
-  "Index contour extremity": 43.0,
-  "Index contour base": 47.0,
-  "Height": 15.0,
-  "Pen radius": 4.0,
-  "Thickness": 2.0,
-  "Thumb-Index angle": 60.0,
-  "Index-Ground angle": 22.0,
-  "Interstice height": 3.0
-}
+[
+   {
+      "Lang": "French"
+   },
+   {
+      "Hand": "Right"
+   },
+   {
+      "Thumb contour extremity": 59.337591766295915,
+      "Thumb contour base": 71.92721341232667,
+      "Index contour extremity": 48.58585377321991,
+      "Index contour base": 57.14646568057066,
+      "Height": 15.0,
+      "Pen radius": 4.0,
+      "Thickness": 2.0,
+      "Thumb-Index angle": 60.0,
+      "Index-Ground angle": 22.0,
+      "Interstice height": 3.0
+   }
 ]

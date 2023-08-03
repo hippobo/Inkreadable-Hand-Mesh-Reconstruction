@@ -5,7 +5,6 @@ from flask import Flask, request, render_template, jsonify, Response, send_file
 from src.utils.visualization import  run_hand_detection, run_hand_detection_fp
 from src.utils.rendering import render_mesh_trimesh
 
-import statistics
 from src.utils.processing import normalize_vertices_and_joints,uv_to_xy,detect_mediapipe_2d, mediapipe_error_minimize_scalar, get_joint_angles
 import traceback
 import subprocess
@@ -485,6 +484,7 @@ def predict(args):
 
     render_flask()
 
+    get_all_measurements()
     return jsonify({"message": "Done"})
 
 @app.route('/count_images', methods=['GET'])
@@ -548,7 +548,7 @@ def calculate_slices():
     return jsonify(normalVector=normal_json, multi_slices=multi_slices_json, planeCenters=center_array)
 
 
-def get_measurements():
+def get_all_measurements():
 
     chosen_joints = ['Thumb_2' ,'Thumb_3','Thumb_3', 'Thumb_4','Index_2', 'Index_3','Index_3', 'Index_4']
     joint_names = ['Wrist', 'Thumb_1', 'Thumb_2', 'Thumb_3', 'Thumb_4', 'Index_1', 'Index_2', 'Index_3', 'Index_4', 'Middle_1', 'Middle_2', 'Middle_3', 'Middle_4', 'Ring_1', 'Ring_2', 'Ring_3', 'Ring_4', 'Pinky_1', 'Pinky_2', 'Pinky_3', 'Pinky_4']
@@ -598,13 +598,32 @@ def get_measurements():
                 
         closest_polygon_lengths.append(closest_polygon.length * 1000)
 
-        measurement = {'Thumb base' : statistics.mean(closest_polygon_lengths[0:10]), 'Thumb extremity' : statistics.mean(closest_polygon_lengths[95:105]), 'Index Base' : statistics.mean(closest_polygon_lengths[195:205]), 'Index Extremity' : statistics.mean(closest_polygon_lengths[390:400]) }
+    measurements = {'Thumb contour base' : np.mean(closest_polygon_lengths[95:105]), 
+                    'Thumb contour extremity' : np.mean(closest_polygon_lengths[150:160]), 
+                    'Index contour base' : np.mean(closest_polygon_lengths[295:305]), 
+                    'Index contour extremity' : np.mean(closest_polygon_lengths[350:360]) 
+                   }
 
+    # Parse the JSON file
+    with open('./src/flask_app/Inkredable/in/default.json', 'r') as f:
+        data = json.load(f)
 
+    additional_measurements = data[2]  # assuming the measurements are in the 3rd item of the list in your JSON
 
+    # Replace the values in the JSON with the computed measurements
+    for key in measurements.keys():
+        if key in additional_measurements:
+            additional_measurements[key] = measurements[key]
+
+    # Write the changes back to the JSON file
+    with open('./src/flask_app/Inkredable/in/default.json', 'w') as f:
+        json.dump(data, f, indent=3)
+
+   
 if __name__ == "__main__":
-    # app.run(debug=False)
-    get_measurements()
+  app.run(debug=False)
+    
+    
 
 
 
