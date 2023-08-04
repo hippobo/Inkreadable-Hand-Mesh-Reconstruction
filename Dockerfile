@@ -50,11 +50,12 @@ RUN bash scripts/download_models.sh
 EXPOSE 8888
 
 # Set environment variables
-ENV FLASK_APP=app.py
+ENV FLASK_APP=flask_app/app.py
 ENV FLASK_RUN_HOST=0.0.0.0
 
 # Expose port for the Flask web server
 EXPOSE 5000
 
 # Run the application
-CMD ["flask", "run"]
+CMD ["flask", "run", "--host=0.0.0.0", "--port=5000"]
+
