@@ -191,8 +191,7 @@ def run_hand_detection(isLeftHand=False):
                     w_new = bbox_max_dim + expand_dim
                     h_new = bbox_max_dim + expand_dim
 
-                    picture_status = "Picture taken - ready to render"
-                    print(picture_status)
+                    picture_status = "Picture taken - Close camera and Click Render"
                    
                     new_aspect_ratio = size_crop/w_new
                     hand_image_resized = cv2.resize(hand_image,(size_crop,size_crop),interpolation=cv2.INTER_AREA)
@@ -205,20 +204,20 @@ def run_hand_detection(isLeftHand=False):
                     if result.multi_handedness:
                         for hand_handedness in result.multi_handedness:
                             label = hand_handedness.classification[0].label
-                            print('Handedness:', label)
+                            handedness_status = label + " Hand"
                             if (label == "Left"):
                                 isLeftHand = True
                             else:
                                 isLeftHand = False
             
 
-                        with open('./src/flask_app/Inkredable/in/default.json', 'r') as f:
+                        with open('./flask_app/Inkredable/in/default.json', 'r') as f:
                             data = json.load(f)
 
                         data[1]["Hand"] = label
 
 
-                        with open('./src/flask_app/Inkredable/in/default.json', 'w') as f:
+                        with open('./flask_app/Inkredable/in/default.json', 'w') as f:
                             json.dump(data, f, indent=3)
                     
                     if isLeftHand:
@@ -257,8 +256,8 @@ def run_hand_detection(isLeftHand=False):
                     cv2.imwrite('./samples/hand_uncropped/hand_image_uncropped.png', frame_to_save)
                     stationary_counter = 0
 
-        cv2.putText(frame, picture_status, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-        cv2.putText(frame, handedness_status, (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+        cv2.putText(frame, picture_status, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
+        cv2.putText(frame, handedness_status, (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
         ret, buffer = cv2.imencode('.jpg', frame)
         frame = buffer.tobytes()
         yield (b'--frame\r\n'
@@ -361,13 +360,13 @@ def run_hand_detection_fp(uncropped_image_file_path,isLeftHand=False):
                                 isLeftHand = False
             
 
-                        with open('./src/flask_app/Inkredable/in/default.json', 'r') as f:
+                        with open('./flask_app/Inkredable/in/default.json', 'r') as f:
                             data = json.load(f)
 
                         data[1]["Hand"] = label
 
 
-                        with open('./src/flask_app/Inkredable/in/default.json', 'w') as f:
+                        with open('./flask_app/Inkredable/in/default.json', 'w') as f:
                             json.dump(data, f, indent=3)
                         
         if isLeftHand:
@@ -475,9 +474,11 @@ def run_chessboard_detection():
                     picture_status = "No chessboard detected"
 
                 if (stop_detection and frame_counter == 10):
-                    picture_status = "Click calibrate to finalize calibration"
+                    picture_status = "Close camera and click Calibrate to finish" 
+                    
 
-            cv2.putText(frame, picture_status, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+            cv2.putText(frame, picture_status, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
+            
             ret, buffer = cv2.imencode('.jpg', frame)
             frame = buffer.tobytes()
             yield (b'--frame\r\n'
@@ -492,12 +493,4 @@ def run_chessboard_detection():
         cap.release()
     
 
-        _, mtx, dist, rvecs, tvecs = calibrate('./samples/Chessboard_Images/',0.024, 9,6)
-
-        print("Calibration Done ")
-        np.save("./samples/camera_params/camera_matrix", mtx)
-        np.save("./samples/camera_params/distortion_coefficients", dist)
-        np.save("./samples/camera_params/rvecs", rvecs)
-        np.save("./samples/camera_params/tvecs", tvecs)
-        np.save("./samples/camera_params/dist", dist)
 

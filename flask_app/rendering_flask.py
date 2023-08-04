@@ -88,7 +88,7 @@ def render_mesh_trimesh(mesh, K, translation_x, translation_y, translation_z, di
     plt.imsave('./samples/hand_rendered/rendered_image_trimesh.png', color)
 
 def render_flask():
-    from src.flask_app.processing_flask import normalize_vertices_and_joints,uv_to_xy,detect_mediapipe_2d, mediapipe_error_minimize_scalar, get_joint_angles
+    from flask_app.processing_flask import normalize_vertices_and_joints,uv_to_xy,detect_mediapipe_2d, mediapipe_error_minimize_scalar, get_joint_angles
     K_params = np.load('./samples/hand_info_export/new_K_matrix.npy')
     coin_coords = np.load('./samples/hand_info_export/coin_coords.npy')
     mediapipe_2d_image = np.load('./samples/hand_info_export/mediapipe_2d_image.npy')
@@ -273,9 +273,9 @@ def render_flask():
  
 def run_blender():
     
-    blend_file_path = "src/flask_app/Inkredable/scripts/empty.blend"
+    blend_file_path = "./flask_app/Inkredable/scripts/empty.blend"
     blender_file_path = "Blender/blender-2.82-linux64/blender"
-    script_file_path = "src/flask_app/Inkredable/scripts/Inkredable.py"
+    script_file_path = "./flask_app/Inkredable/scripts/Inkredable.py"
 
     command = [blender_file_path, "--background", blend_file_path, "--python", script_file_path]
     subprocess.run(command)

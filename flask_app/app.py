@@ -41,10 +41,10 @@ from src.utils.miscellaneous import mkdir, set_seed
 from src.utils.metric_logger import AverageMeter
 from src.utils.metric_pampjpe import reconstruction_error
 from src.utils.geometric_layers import orthographic_projection
-from src.flask_app.visualization_flask import  run_hand_detection, run_hand_detection_fp, get_joints, run_chessboard_detection
-from src.flask_app.rendering_flask import render_mesh_trimesh, render_flask, run_blender
+from flask_app.visualization_flask import  run_hand_detection, run_hand_detection_fp, get_joints, run_chessboard_detection
+from flask_app.rendering_flask import render_mesh_trimesh, render_flask, run_blender
 from src.utils.camera_calibration import calibrate
-from src.flask_app.processing_flask import normalize_vertices_and_joints,uv_to_xy,detect_mediapipe_2d, mediapipe_error_minimize_scalar, get_joint_angles, run_inference
+from flask_app.processing_flask import normalize_vertices_and_joints,uv_to_xy,detect_mediapipe_2d, mediapipe_error_minimize_scalar, get_joint_angles, run_inference
 from werkzeug.utils import secure_filename
 
 import matplotlib.cm as cm
@@ -235,7 +235,7 @@ def render_orthosis():
     thread.join()
 
     # Load the STL file
-    your_mesh = trimesh.load_mesh('./src/flask_app/Inkredable/out/default.STL')
+    your_mesh = trimesh.load_mesh('./flask_app/Inkredable/out/default.STL')
 
     # Convert the mesh data to JSON
     data = {
@@ -283,7 +283,17 @@ def upload_images_calib():
         traceback.print_exc()  # This will print the traceback to the console, which is useful for debugging
         return jsonify({"message": f"{str(e)} - Please check chessboard format/visibility"}), 500
 
+@app.route("/calibrate_feed", methods=["POST"])
+def calibrate_route():
 
+    _, mtx, dist, rvecs, tvecs = calibrate('./samples/Chessboard_Images/',0.024, 9,6)
+    np.save("./samples/camera_params/camera_matrix", mtx)
+    np.save("./samples/camera_params/distortion_coefficients", dist)
+    np.save("./samples/camera_params/rvecs", rvecs)
+    np.save("./samples/camera_params/tvecs", tvecs)
+    np.save("./samples/camera_params/dist", dist)
+
+    return jsonify({"message": "Calibration Done"})
       
 picture_status = "" 
 
@@ -293,7 +303,7 @@ def start_hand_detection():
     thread = Thread(target=run_hand_detection)
     thread.start()
     thread.join()
-    picture_status = "Picture taken - ready to render"
+   
     return jsonify({"message": "Done"})
 
 @app.route("/get_picture_status")
@@ -496,6 +506,7 @@ def count_images():
 
 
 
+
 @app.route('/video_feed_hand_detection')
 def video_feed_hand_detection():
     return Response(run_hand_detection(),
@@ -609,7 +620,7 @@ def get_all_measurements():
                    }
 
     # Parse the JSON file
-    with open('./src/flask_app/Inkredable/in/default.json', 'r') as f:
+    with open('./flask_app/Inkredable/in/default.json', 'r') as f:
         data = json.load(f)
 
     additional_measurements = data[2]  # assuming the measurements are in the 3rd item of the list in your JSON
@@ -620,12 +631,12 @@ def get_all_measurements():
             additional_measurements[key] = measurements[key]
 
     # Write the changes back to the JSON file
-    with open('./src/flask_app/Inkredable/in/default.json', 'w') as f:
+    with open('./flask_app/Inkredable/in/default.json', 'w') as f:
         json.dump(data, f, indent=3)
 
    
 if __name__ == "__main__":
-  app.run(debug=False, port=5000)
+  app.run(debug=False, host='0.0.0.0', port=5000)
     
     
 

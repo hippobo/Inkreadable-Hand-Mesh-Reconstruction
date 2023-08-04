@@ -12,6 +12,10 @@ import argparse
 def calibrate(dirpath, square_size, width, height, visualize=False):
     """ Apply camera calibration operation for images in the given directory path. """
 
+   
+    
+    if not os.path.isdir(dirpath):
+        raise Exception(f'Invalid directory: {dirpath}')
     # termination criteria
     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
 

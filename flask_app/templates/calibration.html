@@ -55,7 +55,7 @@
         <button class="btn btn-primary mb-3 custom-button" style="display: none;" id="closeCameraButton" onclick="stopCamera()">
         Close Camera
            </button>
-        <button class="btn btn-primary mb-3 custom-button" style="display: none;" id="stopDetectionButton" onclick="stopStream()">
+        <button class="btn btn-primary mb-3 custom-button" style="display: none;" id="startCalibrationButton" onclick="startCalib()">
         Calibrate
         </button>
 
@@ -149,7 +149,7 @@ function startStream() {
         var video = document.getElementById('video');
         video.src = "{{ url_for('video_feed_calibration') }}";
         document.getElementById("startDetectionButton").disabled = true;
-        document.getElementById("stopDetectionButton").style.display = "none";
+        document.getElementById("startCalibrationButton").style.display = "none";
 
         document.getElementById("closeCameraButton").style.display = "block";
         document.getElementById("closeCameraButton").disabled = false;
@@ -163,14 +163,21 @@ function stopCamera(){
         document.getElementById("startDetectionButton").disabled = false;
 
 }
-    function stopStream() {
-        var video = document.getElementById('video');
-        video.src = "";
-        document.getElementById("startDetectionButton").disabled = false;
-        document.getElementById("stopDetectionButton").disabled = true;
-        showMessage('Calibration Done');
-       
-    }
+function startCalib() {
+    var video = document.getElementById('video');
+    video.src = "";
+    document.getElementById("startDetectionButton").disabled = false;
+    document.getElementById("startCalibrationButton").disabled = true;
+    document.getElementById("closeCameraButton").disabled = true;
+    fetch("/calibrate_feed", {
+        method: "POST"
+    })
+    .then(response => response.json())
+    .then(data => {
+        showMessage(data.message);
+    });
+}
+
 
     function checkImageCount() {
         fetch('/count_images')
@@ -178,9 +185,9 @@ function stopCamera(){
         .then(data => {
             if (data.count === 10) {
                 document.getElementById("startDetectionButton").disabled = true;
-                document.getElementById("stopDetectionButton").style.display = "block";
+                document.getElementById("startCalibrationButton").style.display = "block";
             } else {
-                document.getElementById("stopDetectionButton").style.display = "none";
+                document.getElementById("startCalibrationButton").style.display = "none";
                 setTimeout(checkImageCount, 2000);
             }
         });

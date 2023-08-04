@@ -3,7 +3,7 @@ from trimesh.transformations import scale_matrix
 import mediapipe as mp
 import cv2
 import torch
-from src.flask_app.rendering_flask import  render_mesh_trimesh
+from flask_app.rendering_flask import  render_mesh_trimesh
 import torch
 from torchvision import transforms
 from PIL import Image
