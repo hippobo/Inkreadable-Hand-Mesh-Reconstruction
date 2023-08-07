@@ -33,6 +33,7 @@ dist/
 # project dirs
 /data
 /datasets
+samples/hand_tests
 Blender/
 models
 output
