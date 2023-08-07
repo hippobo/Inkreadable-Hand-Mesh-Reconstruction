@@ -27,8 +27,8 @@ cd Inkreadable-Hand-Mesh-Reconstruction
 
 docker compose up --build
 ```
-
-All dependecies and requirements, including Blender, Apex, and pre-trained models will be installed except for MANO and SMPL.
+This may take a long time -
+all dependecies and requirements, including Blender, Apex, and pre-trained models will be installed except for MANO and SMPL.
 Cuda is required on your machine.
 
 Visit the following websites to download SMPL and MANO models. 
@@ -51,7 +51,7 @@ Visit the following websites to download SMPL and MANO models.
     |-- ... 
     |-- ... 
 
- 
+
 ## Without Docker 
 MeshGraphormer is developed based on Ubuntu 16.04 and NVIDIA GPU cards. 
 
@@ -97,7 +97,7 @@ pip install ./manopth/.
 
 unset INSTALL_DIR
 ```
-## Download Blender for rendering STL file for the orthosis
+### Download Blender for rendering STL file for the orthosis
 
  ```bash
     cd $REPO_DIR
