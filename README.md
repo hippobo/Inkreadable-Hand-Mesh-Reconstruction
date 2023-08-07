@@ -15,10 +15,45 @@ The goal of this project was to create an open-source tool usable by people with
 <img src="docs/orthese2.jpeg" hwidth="200"> 
 
 
-## Graphormer Installation
+# Inkredable Mesh Reconstruction Installation
 
 
-Graphormer is developed based on Ubuntu 16.04 and NVIDIA GPU cards. 
+## With Docker
+
+```bash 
+git clone --recursive git@github.com:hippobo/Inkreadable-Hand-Mesh-Reconstruction.git
+
+cd Inkreadable-Hand-Mesh-Reconstruction
+
+docker compose up --build
+```
+
+All dependecies and requirements, including Blender, Apex, and pre-trained models will be installed except for MANO and SMPL.
+Cuda is required on your machine.
+
+Visit the following websites to download SMPL and MANO models. 
+
+    - Download `basicModel_neutral_lbs_10_207_0_v1.0.0.pkl` from [SMPLify](http://smplify.is.tue.mpg.de/), and place it at `${REPO_DIR}/src/modeling/data`.
+    - Download `MANO_RIGHT.pkl` from [MANO](https://mano.is.tue.mpg.de/), and place it at `${REPO_DIR}/src/modeling/data`.
+
+    Please put the downloaded files under the `${REPO_DIR}/src/modeling/data` directory. The data structure should follow the hierarchy below. 
+    ```
+    ${REPO_DIR}  
+    |-- src  
+    |   |-- modeling
+    |   |   |-- data
+    |   |   |   |-- basicModel_neutral_lbs_10_207_0_v1.0.0.pkl
+    |   |   |   |-- MANO_RIGHT.pkl
+    |-- models
+    |-- datasets
+    |-- predictions
+    |-- README.md 
+    |-- ... 
+    |-- ... 
+
+ 
+## Without Docker 
+MeshGraphormer is developed based on Ubuntu 16.04 and NVIDIA GPU cards. 
 
 ### Requirements
 - Python 3.7
