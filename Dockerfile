@@ -1,3 +1,4 @@
+# Use an official Python runtime as a parent image
 FROM nvidia/cuda:11.7.1-cudnn8-devel-ubuntu20.04
 
 WORKDIR /app
@@ -55,7 +56,9 @@ EXPOSE 8888
 EXPOSE 5000
 
 
-ENV FLASK_APP=app.py
+
+# Given the structure of your directory, you should set FLASK_APP like this:
+ENV FLASK_APP=flask_app
 
 RUN pip3 freeze
 

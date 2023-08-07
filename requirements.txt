@@ -30,5 +30,3 @@ tqdm==4.64.1
 trimesh[all]==3.21.7
 yacs==0.1.8
 pyglet==1.5.27
-gunicorn==21.2.0
-uvicorn==0.22.0
