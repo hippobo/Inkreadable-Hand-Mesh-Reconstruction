@@ -43,11 +43,24 @@ RUN pip3 install ./manopth/.
 # Download Blender
 RUN bash scripts/download_blender_linux.sh
 
+
+# Create a non-root user
+RUN useradd -ms /bin/bash myuser
+
+# Change ownership of /app directory to myuser
+RUN chown -R myuser:myuser /app
+
+# Switch to the non-root user
+USER myuser
+
+
 # Create models directory
 RUN mkdir -p models
 
 # Download pre-trained models
 RUN bash scripts/download_models.sh
+
+
 
 # Expose port for the server
 EXPOSE 8888

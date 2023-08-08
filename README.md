@@ -21,7 +21,7 @@ The goal of this project was to create an open-source tool usable by people with
 ## With Docker
 
 ```bash 
-git clone --recursive git@github.com:hippobo/Inkreadable-Hand-Mesh-Reconstruction.git
+git clone --recursive https://github.com/hippobo/Inkreadable-Hand-Mesh-Reconstruction.git
 
 cd Inkreadable-Hand-Mesh-Reconstruction
 
@@ -110,20 +110,20 @@ unset INSTALL_DIR
 
 ### Getting Started
 
-1. Create folder that store pretrained models
+1. Create folder that store pretrained model
     ```bash
     export REPO_DIR=$PWD
     mkdir -p $REPO_DIR/models  # pre-trained models
     ```
 
-2. Download pretrained models.
+2. Download pretrained model.
 
-    Pre-trained models can be downloaded with the following command.
+    The pre-trained model can be downloaded with the following command.
     ```bash
     cd $REPO_DIR
     bash scripts/download_models.sh
     ```
-    The scripts will download three models that are trained for mesh reconstruction on Human3.6M, 3DPW, and FreiHAND, respectively. For your convenience, this script will also download HRNet pre-trained weights, which will be used in training. 
+   This script will also download HRNet pre-trained weights, and create crucial directories.
 
     The resulting data structure should follow the hierarchy as below. 
     ```

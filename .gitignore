@@ -21,7 +21,6 @@ dist/
 *.swp
 *~
 
-.gitkeep
 
 # Pycharm editor settings
 .idea
