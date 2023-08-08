@@ -1,4 +1,5 @@
 version: "3.7"
+
 services:
   app:
     build: .
@@ -6,13 +7,21 @@ services:
       - "5000:5000"
     devices:
       - "/dev/video0:/dev/video0"
+      - "/dev/video1:/dev/video1"
+      - "/dev/video2:/dev/video2"
+      - "/dev/video3:/dev/video3"
+      - "/dev/video4:/dev/video4"
+      - "/dev/video5:/dev/video5"
+      
+     
     environment:
       - FLASK_APP=flask_app/app.py
-      - FLASK_RUN_HOST=0.0.0.0
+
     deploy:
       resources:
         reservations:
           devices:
-          - driver: nvidia
-            count: 1
-            capabilities: [gpu, utility]
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu, utility]
+

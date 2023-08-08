@@ -105,6 +105,16 @@ unset INSTALL_DIR
 
 ```
 
+### Create crucial directories 
+
+
+ ```bash
+    cd $REPO_DIR
+    bash scripts/create_dirs.sh
+
+
+```
+
 ## Model Downloads
 
 
@@ -123,7 +133,7 @@ unset INSTALL_DIR
     cd $REPO_DIR
     bash scripts/download_models.sh
     ```
-   This script will also download HRNet pre-trained weights, and create crucial directories.
+   This script will also download HRNet pre-trained weights.
 
     The resulting data structure should follow the hierarchy as below. 
     ```

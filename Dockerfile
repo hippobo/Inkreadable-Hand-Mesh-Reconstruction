@@ -1,15 +1,22 @@
 # Use an official Python runtime as a parent image
 FROM nvidia/cuda:11.7.1-cudnn8-devel-ubuntu20.04
 
+ENV FLASK_RUN_HOST=0.0.0.0
+ENV FLASK_RUN_PORT=5000
+# Set environment variables
+ENV FLASK_APP=flask_app/app.py
+ENV PIP_DEFAULT_TIMEOUT=100
+
 WORKDIR /app
 
 # Copy the current directory contents into the container at /app
 COPY . /app
 
-# Install any needed packages specified in requirements.txt
+# Install necessary packages
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
-    software-properties-common gcc git wget
+    software-properties-common gcc git wget libgl1-mesa-glx libglu1-mesa libsm6 libxext6 libxrender-dev
 
+# Install Python 3.7 and pip
 RUN add-apt-repository -y ppa:deadsnakes/ppa && \
     apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     python3.7 python3.7-venv python3.7-distutils python3.7-dev python3-pip 
@@ -18,14 +25,6 @@ RUN add-apt-repository -y ppa:deadsnakes/ppa && \
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.7 1
 
 RUN python3 setup.py build develop
-
-ARG PIP_NO_CACHE_DIR=1
-# Set pip default timeout
-ENV PIP_DEFAULT_TIMEOUT=100
-
-RUN apt-get update && apt-get install -y libgl1-mesa-glx libglu1-mesa
-
-
 
 # Install pip packages
 RUN pip3 install --upgrade pip && \
@@ -43,9 +42,10 @@ RUN pip3 install ./manopth/.
 # Download Blender
 RUN bash scripts/download_blender_linux.sh
 
+RUN bash scripts/create_dirs.sh
 
-# Create a non-root user
-RUN useradd -ms /bin/bash myuser
+# Create a non-root user and add to video group
+RUN useradd -ms /bin/bash myuser && usermod -a -G video myuser
 
 # Change ownership of /app directory to myuser
 RUN chown -R myuser:myuser /app
@@ -53,28 +53,5 @@ RUN chown -R myuser:myuser /app
 # Switch to the non-root user
 USER myuser
 
-
-# Create models directory
-RUN mkdir -p models
-
-# Download pre-trained models
-RUN bash scripts/download_models.sh
-
-
-
-# Expose port for the server
-EXPOSE 8888
-
-# Expose port for the Flask web server
-EXPOSE 5000
-
-
-
-# Given the structure of your directory, you should set FLASK_APP like this:
-ENV FLASK_APP=flask_app
-
-RUN pip3 freeze
-
-
 # Run the application
-CMD ["flask", "run", "--host=0.0.0.0", "--port=5000"]
+CMD ["flask", "run"]

@@ -80,61 +80,29 @@ else:
 
 app = Flask(__name__)
 
+def get_default_args():
+    return {
+        "num_workers": 4,
+        "img_scale_factor": 1,
+        "image_file_or_path": './samples/hand_cropped',
+        "model_name_or_path": 'src/modeling/bert/bert-base-uncased/',
+        "resume_checkpoint": "./models/graphormer_release/graphormer_hand_state_dict.bin",
+        "output_dir": 'output/',
+        "config_name": "",
+        "arch": 'hrnet-w64',
+        "num_hidden_layers": 4,
+        "hidden_size": -1,
+        "num_attention_heads": 4,
+        "intermediate_size": -1,
+        "input_feat_dim": '2051,512,128',
+        "hidden_feat_dim": '1024,256,64',
+        "which_gcn": '0,0,1',
+        "mesh_type": 'hand',
+        "run_eval_only": True,
+        "device": 'cuda',
+        "seed": 88
+    }
 
-def parse_args():
-    parser = argparse.ArgumentParser()
-    #########################################################
-    # Data related arguments
-    #########################################################
-    parser.add_argument("--num_workers", default=4, type=int, 
-                        help="Workers in dataloader.")       
-    parser.add_argument("--img_scale_factor", default=1, type=int, 
-                        help="adjust image resolution.")  
-    parser.add_argument("--image_file_or_path", default='./samples/hand_cropped', type=str, 
-                        help="test data")
-    #########################################################
-    # Loading/saving checkpoints
-    #########################################################
-    parser.add_argument("--model_name_or_path", default='src/modeling/bert/bert-base-uncased/', type=str, required=False,
-                        help="Path to pre-trained transformer model or model type.")
-    parser.add_argument("--resume_checkpoint", default="./models/graphormer_release/graphormer_hand_state_dict.bin", type=str, required=False,
-                        help="Path to specific checkpoint for resume training.")
-    parser.add_argument("--output_dir", default='output/', type=str, required=False,
-                        help="The output directory to save checkpoint and test results.")
-    parser.add_argument("--config_name", default="", type=str, 
-                        help="Pretrained config name or path if not the same as model_name.")
-    parser.add_argument('-a', '--arch', default='hrnet-w64',
-                    help='CNN backbone architecture: hrnet-w64, hrnet, resnet50')
-    #########################################################
-    # Model architectures
-    #########################################################
-    parser.add_argument("--num_hidden_layers", default=4, type=int, required=False, 
-                        help="Update model config if given")
-    parser.add_argument("--hidden_size", default=-1, type=int, required=False, 
-                        help="Update model config if given")
-    parser.add_argument("--num_attention_heads", default=4, type=int, required=False, 
-                        help="Update model config if given. Note that the division of "
-                        "hidden_size / num_attention_heads should be in integer.")
-    parser.add_argument("--intermediate_size", default=-1, type=int, required=False, 
-                        help="Update model config if given.")
-    parser.add_argument("--input_feat_dim", default='2051,512,128', type=str, 
-                        help="The Image Feature Dimension.")          
-    parser.add_argument("--hidden_feat_dim", default='1024,256,64', type=str, 
-                        help="The Image Feature Dimension.")  
-    parser.add_argument("--which_gcn", default='0,0,1', type=str, 
-                        help="which encoder block to have graph conv. Encoder1, Encoder2, Encoder3. Default: only Encoder3 has graph conv") 
-    parser.add_argument("--mesh_type", default='hand', type=str, help="body or hand") 
-
-    #########################################################
-    # Others
-    #########################################################
-    parser.add_argument("--run_eval_only", default=True, action='store_true',) 
-    parser.add_argument("--device", type=str, default='cuda', 
-                        help="cuda or cpu")
-    parser.add_argument('--seed', type=int, default=88, 
-                        help="random seed for initialization.")
-    args = parser.parse_args()
-    return args
 
 def create_3d_trace(mesh):
     # Create a 3D scatter plot trace for the mesh
@@ -314,13 +282,20 @@ def get_picture_status():
 
 @app.route("/start_prediction")
 def start_prediction():
-    try:
-        args = parse_args()
-        predict(args)
-        return jsonify({"message": "Done"})
-    except ValueError as e:
-        return jsonify({"error": str(e)}), 500
+    app.logger.info("Entered the function")
+  
 
+    try:
+        predict()
+        app.logger.info("Exiting the function")
+
+        return jsonify({"message": "Done"})
+    
+    except Exception as e:
+        app.logger.info("Exiting the function")
+        app.logger.error(f"Unexpected error: {e}")
+        return jsonify({"error": str(e)}), 500
+  
 
 @app.route('/data')
 def data():
@@ -355,50 +330,51 @@ def orthosis_render():
 
 
 @app.route('/predict', methods=['POST'])
-def predict(args):
+def predict():
+
+    args_dict = get_default_args()
     global logger
+
     # Setup CUDA, GPU & distributed training
-    args.num_gpus = int(os.environ['WORLD_SIZE']) if 'WORLD_SIZE' in os.environ else 1
-    os.environ['OMP_NUM_THREADS'] = str(args.num_workers)
+    args_dict["num_gpus"] = int(os.environ['WORLD_SIZE']) if 'WORLD_SIZE' in os.environ else 1
+    os.environ['OMP_NUM_THREADS'] = str(args_dict["num_workers"])
     print('set os.environ[OMP_NUM_THREADS] to {}'.format(os.environ['OMP_NUM_THREADS']))
    
-    mkdir(args.output_dir)
-    logger = setup_logger("Graphormer", args.output_dir, get_rank())
-    set_seed(args.seed, args.num_gpus)
-    logger.info("Using {} GPUs".format(args.num_gpus))
+    mkdir(args_dict["output_dir"])
+    logger = setup_logger("Graphormer", args_dict["output_dir"], get_rank())
+    set_seed(args_dict["seed"], args_dict["num_gpus"])
+    logger.info("Using {} GPUs".format(args_dict["num_gpus"]))
 
-    # Mesh and MANO utils
-    mano_model = MANO().to(args.device)
+    mano_model = MANO().to(args_dict["device"])
     mano_model.layer = mano_model.layer.cuda()
     mesh_sampler = Mesh()
-    
-    # Load pretrained model
-    trans_encoder =[ ]
 
-    input_feat_dim = [int(item) for item in args.input_feat_dim.split(',')]
-    hidden_feat_dim = [int(item) for item in args.hidden_feat_dim.split(',')]
+    trans_encoder = []
+
+    input_feat_dim = [int(item) for item in args_dict["input_feat_dim"].split(',')]
+    hidden_feat_dim = [int(item) for item in args_dict["hidden_feat_dim"].split(',')]
     output_feat_dim = input_feat_dim[1:] + [3]
-    
-    # which encoder block to have graph convs
-    which_blk_graph = [int(item) for item in args.which_gcn.split(',')]
 
-    if args.run_eval_only==True and args.resume_checkpoint!=None and args.resume_checkpoint!='None' and 'state_dict' not in args.resume_checkpoint:
+    which_blk_graph = [int(item) for item in args_dict["which_gcn"].split(',')]
+
+
+    if args_dict["run_eval_only"]==True and args_dict["resume_checkpoint"]!=None and args_dict["resume_checkpoint"]!='None' and 'state_dict' not in args_dict["resume_checkpoint"]:
         # if only run eval, load checkpoint
-        logger.info("Evaluation: Loading from checkpoint {}".format(args.resume_checkpoint))
-        _model = torch.load(args.resume_checkpoint)
+        logger.info("Evaluation: Loading from checkpoint {}".format(args_dict["resume_checkpoint"]))
+        _model = torch.load(args_dict["resume_checkpoint"])
 
     else:
         # init three transformer-encoder blocks in a loop
         for i in range(len(output_feat_dim)):
             config_class, model_class = BertConfig, Graphormer
-            config = config_class.from_pretrained(args.config_name if args.config_name \
-                    else args.model_name_or_path)
+            config = config_class.from_pretrained(args_dict["config_name"] if args_dict["config_name"] \
+                    else args_dict["model_name_or_path"])
 
             config.output_attentions = False
             config.img_feature_dim = input_feat_dim[i] 
             config.output_feature_dim = output_feat_dim[i]
-            args.hidden_size = hidden_feat_dim[i]
-            args.intermediate_size = int(args.hidden_size*2)
+            args_dict["hidden_size"] = hidden_feat_dim[i]
+            args_dict["intermediate_size"] = int(args_dict["hidden_size"]*2)
 
             if which_blk_graph[i]==1:
                 config.graph_conv = True
@@ -406,12 +382,12 @@ def predict(args):
             else:
                 config.graph_conv = False
 
-            config.mesh_type = args.mesh_type
+            config.mesh_type = args_dict["mesh_type"]
 
             # update model structure if specified in arguments
             update_params = ['num_hidden_layers', 'hidden_size', 'num_attention_heads', 'intermediate_size']
             for idx, param in enumerate(update_params):
-                arg_param = getattr(args, param)
+                arg_param = args_dict[param]
                 config_param = getattr(config, param)
                 if arg_param > 0 and arg_param != config_param:
                     logger.info("Update config parameter {}: {} -> {}".format(param, config_param, arg_param))
@@ -424,21 +400,21 @@ def predict(args):
             trans_encoder.append(model)
         
         # create backbone model
-        if args.arch=='hrnet':
+        if args_dict["arch"]=='hrnet':
             hrnet_yaml = 'models/hrnet/cls_hrnet_w40_sgd_lr5e-2_wd1e-4_bs32_x100.yaml'
             hrnet_checkpoint = 'models/hrnet/hrnetv2_w40_imagenet_pretrained.pth'
             hrnet_update_config(hrnet_config, hrnet_yaml)
             backbone = get_cls_net_gridfeat(hrnet_config, pretrained=hrnet_checkpoint)
             logger.info('=> loading hrnet-v2-w40 model')
-        elif args.arch=='hrnet-w64':
+        elif args_dict["arch"]=='hrnet-w64':
             hrnet_yaml = 'models/hrnet/cls_hrnet_w64_sgd_lr5e-2_wd1e-4_bs32_x100.yaml'
             hrnet_checkpoint = 'models/hrnet/hrnetv2_w64_imagenet_pretrained.pth'
             hrnet_update_config(hrnet_config, hrnet_yaml)
             backbone = get_cls_net_gridfeat(hrnet_config, pretrained=hrnet_checkpoint)
             logger.info('=> loading hrnet-v2-w64 model')
         else:
-            print("=> using pre-trained model '{}'".format(args.arch))
-            backbone = models.__dict__[args.arch](pretrained=True)
+            print("=> using pre-trained model '{}'".format(args_dict["arch"]))
+            backbone = models.__dict__[args_dict["arch"]](pretrained=True)
             # remove the last fc layer
             backbone = torch.nn.Sequential(*list(backbone.children())[:-1])
 
@@ -451,11 +427,11 @@ def predict(args):
         # build end-to-end Graphormer network (CNN backbone + multi-layer Graphormer encoder)
         _model = Graphormer_Network(config, backbone, trans_encoder)
 
-        if args.resume_checkpoint!=None and args.resume_checkpoint!='None':
+        if args_dict["resume_checkpoint"]!=None and args_dict["resume_checkpoint"]!='None':
             # for fine-tuning or resume training or inference, load weights from checkpoint
-            logger.info("Loading state dict from checkpoint {}".format(args.resume_checkpoint))
+            logger.info("Loading state dict from checkpoint {}".format(args_dict["resume_checkpoint"]))
             # workaround approach to load sparse tensor in graph conv.
-            state_dict = torch.load(args.resume_checkpoint)
+            state_dict = torch.load(args_dict["resume_checkpoint"])
             _model.load_state_dict(state_dict, strict=False)
             del state_dict
             gc.collect()
@@ -469,24 +445,24 @@ def predict(args):
     for iter_layer in range(4):
         _model.trans_encoder[-1].bert.encoder.layer[iter_layer].attention.self.output_attentions = True
     for inter_block in range(3):
-        setattr(_model.trans_encoder[-1].config,'device', args.device)
+        setattr(_model.trans_encoder[-1].config,'device', args_dict["device"])
 
-    _model.to(args.device)
+    _model.to(args_dict["device"])
     logger.info("Run inference")
 
     image_list = []
-    if not args.image_file_or_path:
+    if not args_dict["image_file_or_path"]:
         raise ValueError("image_file_or_path not specified")
-    if op.isfile(args.image_file_or_path):
-        image_list = [args.image_file_or_path]
-    elif op.isdir(args.image_file_or_path):
+    if op.isfile(args_dict["image_file_or_path"]):
+        image_list = [args_dict["image_file_or_path"]]
+    elif op.isdir(args_dict["image_file_or_path"]):
         # should be a path with images only
-        for filename in os.listdir(args.image_file_or_path):
+        for filename in os.listdir(args_dict["image_file_or_path"]):
             if filename.endswith(".png") or filename.endswith(".jpg") and 'pred' not in filename:
-                image_list.append(args.image_file_or_path+'/'+filename) 
+                image_list.append(args_dict["image_file_or_path"]+'/'+filename) 
 
     else:
-        raise ValueError("Cannot find images at {}".format(args.image_file_or_path))
+        raise ValueError("Cannot find images at {}".format(args_dict["image_file_or_path"]))
 
     if (len(image_list) ==0):
         raise ValueError("No Hand Image found - Please Retake Picture")

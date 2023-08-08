@@ -183,7 +183,7 @@ function startCalib() {
         fetch('/count_images')
         .then(response => response.json())
         .then(data => {
-            if (data.count === 11) {
+            if (data.count === 10) {
                 document.getElementById("startDetectionButton").disabled = true;
                 document.getElementById("startCalibrationButton").style.display = "block";
             } else {
