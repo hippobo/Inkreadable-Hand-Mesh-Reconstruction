@@ -10,6 +10,8 @@ dist/
 # pytorch/python formats
 *.pth
 *.pkl
+!MANO_RIGHT.pkl
+!basicModel_neutral_lbs_10_207_0_v1.0.0.pkl
 
 # ipython/jupyter notebooks
 *.ipynb

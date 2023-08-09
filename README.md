@@ -25,7 +25,7 @@ git clone --recursive https://github.com/hippobo/Inkreadable-Hand-Mesh-Reconstru
 
 cd Inkreadable-Hand-Mesh-Reconstruction
 
-docker compose up --build
+docker compose build
 ```
 This may take a long time -
 all dependecies and requirements, including Blender, Apex, and pre-trained models will be installed except for MANO and SMPL.
@@ -50,6 +50,18 @@ Visit the following websites to download SMPL and MANO models.
     |-- README.md 
     |-- ... 
     |-- ... 
+
+Run the container :
+
+```bash
+docker compose up 
+```
+
+Stop the container :
+
+```bash
+docker compose down
+```
 
 
 ## Without Docker 
