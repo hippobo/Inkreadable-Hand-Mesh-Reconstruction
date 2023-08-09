@@ -235,7 +235,7 @@ def upload_images_calib():
             else:
                 return jsonify({"message": "Invalid file format - only images are allowed"}), 400
         
-        ret, mtx, dist, rvecs, tvecs = calibrate('./samples/Chessboard_Images/',0.024, 9,6)
+        ret, mtx, dist, rvecs, tvecs = calibrate('./samples/Chessboard_Images/',0.024, 6,9)
         np.save("./samples/camera_params/camera_matrix", mtx)
         np.save("./samples/camera_params/distortion_coefficients", dist)
         np.save("./samples/camera_params/rvecs", rvecs)
@@ -254,13 +254,16 @@ def upload_images_calib():
 @app.route("/calibrate_feed", methods=["POST"])
 def calibrate_route():
 
-    _, mtx, dist, rvecs, tvecs = calibrate('./samples/Chessboard_Images/',0.024, 9,6)
+    ret, mtx, dist, rvecs, tvecs = calibrate('./samples/Chessboard_Images/',0.024, 6,9)
     np.save("./samples/camera_params/camera_matrix", mtx)
     np.save("./samples/camera_params/distortion_coefficients", dist)
     np.save("./samples/camera_params/rvecs", rvecs)
     np.save("./samples/camera_params/tvecs", tvecs)
     np.save("./samples/camera_params/dist", dist)
 
+    files = glob.glob('./samples/Chessboard_Images/*')
+    for f in files:
+        os.remove(f)
     return jsonify({"message": "Calibration Done"})
       
 picture_status = "" 
@@ -287,13 +290,12 @@ def start_prediction():
 
     try:
         predict()
-        app.logger.info("Exiting the function")
+      
 
         return jsonify({"message": "Done"})
     
     except Exception as e:
-        app.logger.info("Exiting the function")
-        app.logger.error(f"Unexpected error: {e}")
+        app.logger.error(f"Unexpected error: {e}\n{traceback.format_exc()}")
         return jsonify({"error": str(e)}), 500
   
 

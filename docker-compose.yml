@@ -2,7 +2,9 @@ version: "3.7"
 
 services:
   app:
-    build: .
+    build:
+      context: .
+    image: inkredable_app
     ports:
       - "5000:5000"
     devices:
@@ -13,15 +15,16 @@ services:
       - "/dev/video4:/dev/video4"
       - "/dev/video5:/dev/video5"
       
-     
     environment:
       - FLASK_APP=flask_app/app.py
-
+      - NVIDIA_VISIBLE_DEVICES=all
+      - DISPLAY=${DISPLAY}
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
               count: 1
-              capabilities: [gpu, utility]
-
+              capabilities: [gpu]

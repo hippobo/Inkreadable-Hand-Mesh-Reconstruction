@@ -115,45 +115,37 @@ def render_flask():
    
     
     base_K = np.load("./samples/camera_params/camera_matrix.npy")
-    base_K_logitech = np.load("./samples/camera_params/camera_matrix_logitech.npy")
+
+    
 
     focal_length_uncropped = ((base_K[0][0]+ base_K[1][1]) / 2) #mm to m
-    focal_length_uncropped_logitech = ((base_K_logitech[0][0]+ base_K_logitech[1][1]) / 2) #mm to m
+   
 
     K = base_K.copy()
-    K_logitech = base_K_logitech.copy()
-
-
-    K_logitech[0][2] -= x_min_crop
-    K_logitech[1][2] -= y_min_crop
-
-    K_logitech = K_logitech * new_aspect_ratio
-
-
-    K_logitech[2,2] = 1
-    
-    K = K_logitech
-
-
-
-    # K[0][2] -= x_min_crop
-    # K[1][2] -= y_min_crop
-
-    # K = K * new_aspect_ratio
-
-
-    # K[2,2] = 1
-
    
-    print(K)
-    
+
+
+    K[0][2] -= x_min_crop
+    K[1][2] -= y_min_crop
+
+    K = K * new_aspect_ratio
+
+
+    K[2,2] = 1
+
+    print("K",K)
 
     #coin depth is calculated using the uncropped picture, so the uncropped focal length is used for better accuracy
-    depth_coin = ((coin_diameter) * (focal_length_uncropped_logitech   / (radius_coin * 2))) / 1000 #mm to m 
+    depth_coin = ((coin_diameter) * (focal_length_uncropped   / (radius_coin * 2))) / 1000 #mm to m 
+   
 
     vertices = np.load("./samples/hand_info_export/hand_verts.npy")
     faces = np.load("./samples/hand_info_export/hand_faces.npy")
     joints = np.load("./samples/hand_info_export/hand_joints.npy")
+    
+
+    
+        
 
 
     vertices,joints = normalize_vertices_and_joints(vertices,joints) 

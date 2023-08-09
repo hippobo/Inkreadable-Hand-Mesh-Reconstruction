@@ -14,7 +14,7 @@ COPY . /app
 
 # Install necessary packages
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
-    software-properties-common gcc git wget libgl1-mesa-glx libglu1-mesa libsm6 libxext6 libxrender-dev
+    software-properties-common gcc git wget libgl1-mesa-glx libglu1-mesa  libgl1-mesa-dri libsm6 libxext6 libxrender-dev
 
 # Install Python 3.7 and pip
 RUN add-apt-repository -y ppa:deadsnakes/ppa && \

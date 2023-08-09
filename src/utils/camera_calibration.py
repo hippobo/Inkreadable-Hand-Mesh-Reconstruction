@@ -1,15 +1,11 @@
-'''
-Sample Usage:-
-python3 camera_calibration.py --dir ./samples/Chessboard_Images/ --square_size 0.024 --width 9 --height 6
-'''
+
 
 import numpy as np
 import cv2
 import os
-import argparse
 
 
-def calibrate(dirpath, square_size, width, height, visualize=False):
+def calibrate(dirpath, square_size, width, height):
     """ Apply camera calibration operation for images in the given directory path. """
 
    
@@ -56,50 +52,12 @@ def calibrate(dirpath, square_size, width, height, visualize=False):
             
 
 
-
-        if visualize:
-            cv2.imshow('img',img)
-            cv2.waitKey(0)
-
     if num_chessboards_detected != total_images:  # If chessboard was not found in any image
         raise ValueError("Could not find chessboard in all images.")
     
     ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.shape[::-1], None, None)
 
+    print("Calibration Done")
     return [ret, mtx, dist, rvecs, tvecs]
 
-
-if __name__ == '__main__':
-    ap = argparse.ArgumentParser()
-    ap.add_argument("-d", "--dir", required=True, help="Path to folder containing checkerboard images for calibration")
-    ap.add_argument("-w", "--width", type=int, help="Width of checkerboard (default=9)",  default=6)
-    ap.add_argument("-t", "--height", type=int, help="Height of checkerboard (default=6)", default=9)
-    ap.add_argument("-s", "--square_size", type=float, default=1, help="Length of one edge (in metres)")
-    ap.add_argument("-v", "--visualize", type=str, default="False", help="To visualize each checkerboard image")
-    args = vars(ap.parse_args())
-    
-    dirpath = args['dir']
-  
-    square_size = args['square_size']
-
-    width = args['width']
-    height = args['height']
-
-    if args["visualize"].lower() == "true":
-        visualize = True
-    else:
-        visualize = False
-
-    ret, mtx, dist, rvecs, tvecs = calibrate(dirpath, square_size, visualize=visualize, width=width, height=height)
-   
-
-    np.save("./samples/camera_params/camera_matrix", mtx)
-    np.save("./samples/camera_params/distortion_coefficients", dist)
-    np.save("./samples/camera_params/rvecs", rvecs)
-    np.save("./samples/camera_params/tvecs", tvecs)
-    np.save("./samples/camera_params/dist", dist)
-
-    print("Camera Calibration Done")
-
-   
 
