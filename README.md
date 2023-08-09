@@ -31,26 +31,6 @@ This may take a long time -
 all dependecies and requirements, including Blender, Apex, and pre-trained models will be installed except for MANO and SMPL.
 Cuda is required on your machine.
 
-Visit the following websites to download SMPL and MANO models. 
-
-    - Download `basicModel_neutral_lbs_10_207_0_v1.0.0.pkl` from [SMPLify](http://smplify.is.tue.mpg.de/), and place it at `${REPO_DIR}/src/modeling/data`.
-    - Download `MANO_RIGHT.pkl` from [MANO](https://mano.is.tue.mpg.de/), and place it at `${REPO_DIR}/src/modeling/data`.
-
-    Please put the downloaded files under the `${REPO_DIR}/src/modeling/data` directory. The data structure should follow the hierarchy below. 
-    ```
-    ${REPO_DIR}  
-    |-- src  
-    |   |-- modeling
-    |   |   |-- data
-    |   |   |   |-- basicModel_neutral_lbs_10_207_0_v1.0.0.pkl
-    |   |   |   |-- MANO_RIGHT.pkl
-    |-- models
-    |-- datasets
-    |-- predictions
-    |-- README.md 
-    |-- ... 
-    |-- ... 
-
 Run the container :
 
 ```bash
