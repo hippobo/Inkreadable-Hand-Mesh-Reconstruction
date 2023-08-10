@@ -224,7 +224,7 @@ Hand Mesh rendering and slicing
 
 Custom STL File Rendering, Modifying and Download
 
-<img src="docs/flaskapp4.png"  >
+<img src="docs/flask_appgif4.gif"  >
 
 
 

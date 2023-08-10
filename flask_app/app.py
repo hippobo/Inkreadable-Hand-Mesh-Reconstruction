@@ -225,7 +225,11 @@ def get_json_data():
         
         # The client will send data as a single object with key-values to update
         for key, value in request.json.items():
-            # Find the entry that contains the key
+            # Skip "Lang" and "Hand" 
+            if key in ["Lang", "Hand"]:
+                continue
+            
+            # Find the entry that contains the key and update it
             for entry in data:
                 if key in entry:
                     entry[key] = value
@@ -240,6 +244,8 @@ def get_json_data():
         data = json.load(file)
 
     return jsonify(data)
+
+
 def allowed_file(filename):
     ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
     return '.' in filename and \

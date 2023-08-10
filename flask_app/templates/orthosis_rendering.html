@@ -67,31 +67,22 @@ document.addEventListener("DOMContentLoaded", function() {
     .then(data => {
         let tbody = document.getElementById('jsonData').getElementsByTagName('tbody')[0];
         tbody.innerHTML = ""; // Clear any existing data
-        
-      // Define the specific keys you want to display from the JSON
-const allowedKeys = [
-    "Thumb contour extremity",
-    "Thumb contour base",
-    "Index contour extremity",
-    "Index contour base"
-];
 
-data.forEach(entry => {
-    for (let type in entry) {
-        // Check if the current key is one of the allowed keys
-        if (allowedKeys.includes(type)) {
-            let value = JSON.stringify(entry[type]);
+        data.forEach(entry => {
+            for (let key in entry) {
+                if (key !== "Lang" && key !== "Hand") { // Exclude "Lang" and "Hand"
+                    let value = JSON.stringify(entry[key]);
 
-            let row = tbody.insertRow();
-            row.insertCell(0).innerHTML = type;
-            // Create an input field in the next column with the current value
-            row.insertCell(1).innerHTML = `<input type="text" value='${value}' class="form-control">`;
-        }
-    }
-});
-
+                    let row = tbody.insertRow();
+                    row.insertCell(0).innerHTML = key;
+                    row.insertCell(1).innerHTML = `<input type="text" value='${value}' class="form-control">`;
+                }
+            }
+        });
     });
 });
+
+
 
 document.getElementById("applyChanges").addEventListener("click", function() {
    
