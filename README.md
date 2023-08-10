@@ -222,7 +222,7 @@ Hand Mesh rendering and slicing
 <img src="docs/flaskapp3.gif"  >
 
 
-Custom STL File Rendering and Download
+Custom STL File Rendering, Modifying and Download
 
 <img src="docs/flaskapp4.png"  >
 

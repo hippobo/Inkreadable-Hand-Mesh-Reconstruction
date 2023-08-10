@@ -38,6 +38,18 @@
         Render STL
     </button>
 
+    <table id="jsonData" class="table table-bordered mt-3">
+        <thead>
+            <tr>
+                <th>Parameter</th>
+                <th>Value</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Filled using JavaScript -->
+        </tbody>
+    </table>
+    <button class="btn btn-primary mb-3 custom-button" id="applyChanges">Apply Changes</button>
 
     
     
@@ -48,6 +60,113 @@
     
     
     <script>
+
+document.addEventListener("DOMContentLoaded", function() {
+    fetch("/get_json_data")
+    .then(response => response.json())
+    .then(data => {
+        let tbody = document.getElementById('jsonData').getElementsByTagName('tbody')[0];
+        tbody.innerHTML = ""; // Clear any existing data
+        
+      // Define the specific keys you want to display from the JSON
+const allowedKeys = [
+    "Thumb contour extremity",
+    "Thumb contour base",
+    "Index contour extremity",
+    "Index contour base"
+];
+
+data.forEach(entry => {
+    for (let type in entry) {
+        // Check if the current key is one of the allowed keys
+        if (allowedKeys.includes(type)) {
+            let value = JSON.stringify(entry[type]);
+
+            let row = tbody.insertRow();
+            row.insertCell(0).innerHTML = type;
+            // Create an input field in the next column with the current value
+            row.insertCell(1).innerHTML = `<input type="text" value='${value}' class="form-control">`;
+        }
+    }
+});
+
+    });
+});
+
+document.getElementById("applyChanges").addEventListener("click", function() {
+   
+
+    let jsonData = {};
+
+// Collect data from the table
+document.querySelectorAll("#jsonData tbody tr").forEach(row => {
+    let type = row.cells[0].innerText;
+    let value = row.cells[1].getElementsByTagName('input')[0].value;
+    jsonData[type] = JSON.parse(value);
+});
+
+    // Send the modified data to the server
+    fetch("/get_json_data", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(jsonData)
+    }).then(() => {
+        // After sending the modified data, request the server to re-render the orthosis
+        fetch("/render_orthosis")
+        .then(response => response.json())
+        .then(data => {
+            console.log(data);
+        
+        var i, j, k;
+
+        i = data.faces.map(face => face[0]);
+        j = data.faces.map(face => face[1]);
+        k = data.faces.map(face => face[2]);
+
+        var trace = {
+            type: 'mesh3d',
+            x: data.vertices.map(vertex => vertex[0]),
+            y: data.vertices.map(vertex => vertex[1]),
+            z: data.vertices.map(vertex => vertex[2]),
+            i: i,
+            j: j,
+            k: k,
+            color: 'lightpink',
+            opacity: 0.75
+        };
+
+        var layout = {
+            title: 'Your Writing Orthosis',
+            autosize: true,
+            scene: {
+                xaxis: {
+                    range: [Math.min(...trace.x), Math.max(...trace.x)]
+                },
+                yaxis: {
+                    range: [Math.min(...trace.y), Math.max(...trace.y)]
+                },
+                zaxis: {
+                    range: [Math.min(...trace.z), Math.max(...trace.z)]
+                },
+                camera: {
+                    eye: {x: 1, y: 1, z: 1}
+                }
+            }
+        };
+
+        Plotly.react('stlPlot', [trace], layout);
+
+        var username = document.getElementById('username').value;
+        var downloadLink = document.getElementById('downloadLink');
+    downloadLink.href = '/download_stl?username=' + encodeURIComponent(username)
+        downloadLink.style.display = 'block'; 
+        });
+    });
+});
+
+
 document.getElementById("renderSTLButton").addEventListener("click", function() {
     fetch("/render_orthosis")
     .then(response => response.json())

@@ -214,7 +214,32 @@ def render_orthosis():
     }
 
     return jsonify(data)  # Use jsonify to return a response with the application/json mimetype
+@app.route("/get_json_data", methods=["GET", "POST"])
+def get_json_data():
+    json_path = './flask_app/Inkredable/in/default.json'
+    
+    if request.method == "POST":
+        # Load the existing JSON data
+        with open(json_path, 'r') as file:
+            data = json.load(file)
+        
+        # The client will send data as a single object with key-values to update
+        for key, value in request.json.items():
+            # Find the entry that contains the key
+            for entry in data:
+                if key in entry:
+                    entry[key] = value
+                    break
 
+        # Save the modified JSON data
+        with open(json_path, 'w') as file:
+            json.dump(data, file)
+
+    # Load and return the current JSON data for frontend display
+    with open(json_path, 'r') as file:
+        data = json.load(file)
+
+    return jsonify(data)
 def allowed_file(filename):
     ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
     return '.' in filename and \
