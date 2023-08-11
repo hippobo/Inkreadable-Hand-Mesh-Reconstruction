@@ -29,7 +29,7 @@ docker compose build
 ```
 This may take a long time -
 all dependecies and requirements, including Blender, Apex, and pre-trained models will be installed except for MANO and SMPL.
-Cuda is required on your machine.
+Cuda is required on your machine (11.7 is recommended).
 
 Run the container :
 

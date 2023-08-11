@@ -28,7 +28,7 @@ transform_visualize = transforms.Compose([
                     transforms.ToTensor()])
 
 
-def run_inference(image_list, Graphormer_model, mano, renderer, mesh_sampler):
+def run_inference(image_list, Graphormer_model, mano, mesh_sampler):
     
     Graphormer_model.eval()
     mano.eval()
@@ -155,49 +155,6 @@ def get_joint_angles(mediapipe_3d_coords):
 
     return isClosed
 
-def reprojection_error_minimize_scalar(scale,translation_z,wrist_translation, K, mediapipe_2d_image, joints):
-    # scale is the scalar
-    
-    joints = scale * joints
-    joints = joints + [wrist_translation[0],wrist_translation[1],translation_z]
-    
-    mano_2D_homogeneous = (K @ joints.T).T
-
-    # Convert back from homogeneous to regular coordinates
-    mano_2D = mano_2D_homogeneous[:, :2] / (mano_2D_homogeneous[:, 2:] + 0.00000001)
-
-    mediapipe_2d_denorm_image = mediapipe_2d_image.copy()
-    mediapipe_2d_denorm_image[:, 0] = mediapipe_2d_image[:, 0] * 224 
-    mediapipe_2d_denorm_image[:, 1] = mediapipe_2d_image[:, 1] * 224
-
-    # print("scale", scale)
-    # print("scale error: ", np.linalg.norm(mano_2D - mediapipe_2d_denorm_image))
-    
-    
-    return np.sum((mano_2D - mediapipe_2d_denorm_image)**2)
-
-
-def reprojection_error_wrist(translation_vector, translation_z, K,  mediapipe_2d_image, joints):
-
-    
-    translation_vector = np.append(translation_vector, translation_z)
-    
-    
-    wrist = joints[0] + translation_vector
-    mano_2D_homogeneous = (K @ wrist.T).T
-
-    
-
-    # Convert back from homogeneous to regular coordinates
-    mano_wrist_2D = mano_2D_homogeneous[:2] / mano_2D_homogeneous[2]
-
-    mediapipe_2d_denorm_image = mediapipe_2d_image.copy()
-    mediapipe_2D_wrist = mediapipe_2d_denorm_image[0] * 224
-
-    return np.sum((mano_wrist_2D - mediapipe_2D_wrist)**2)
-
-
-
  
 def minimize_2d_mediapipe_wrist(translation_vector, translation_z, mesh_scaled, K,mediapipe_2d_image, mediapipe_2d_mesh):
 
@@ -273,43 +230,12 @@ def mediapipe_error_minimize_scalar(scale, mesh, wrist_pos_image, translation_ve
         mediapipe_2d_denorm_mesh[:, 1] = mediapipe_2d_mesh[:, 1] * 224 
 
         
-        print("scale" , scale)
+        # print("scale" , scale)
        
         print("scale error", np.linalg.norm(mediapipe_2d_denorm_mesh - mediapipe_2d_denorm_image))
-        print("translation z", translation_z) 
-        print("wrist translation", wrist_translation)
+        # print("translation z", translation_z) 
+        # print("wrist translation", wrist_translation)
         
 
         return np.sum((mediapipe_2d_denorm_mesh - mediapipe_2d_denorm_image)**2)
 
-def minimize_rotation(rotatex,rotatey, scale, mesh, translation_vector_xyz, K, mediapipe_2d_mesh, mediapipe_2d_image):
-    scaling = scale_matrix(scale)
-
-    mesh_scaled = mesh.copy()
-    mesh_scaled = mesh_scaled.apply_transform(scaling)
-    translation_z = translation_vector_xyz[2] - np.max(mesh_scaled.vertices[:, 2])
-    render_mesh_trimesh(mesh_scaled,K,translation_vector_xyz[0], translation_vector_xyz[1], translation_z, rotatex_angle=rotatex, rotatey_angle=rotatey)
-    mediapipe_2d_mesh =detect_mediapipe_2d('./samples/hand_rendered/rendered_image_trimesh.png')
-    if mediapipe_2d_mesh is None:
-        return 10000
-    else: 
-
-        
-       
-        mediapipe_2d_denorm_image = mediapipe_2d_image.copy()
-        mediapipe_2d_denorm_image[:, 0] = mediapipe_2d_image[:, 0] * 224 
-        mediapipe_2d_denorm_image[:, 1] = mediapipe_2d_image[:, 1] * 224
-
-        mediapipe_2d_denorm_mesh = mediapipe_2d_mesh.copy()
-        mediapipe_2d_denorm_mesh[:, 0] = mediapipe_2d_mesh[:, 0] * 224 
-        mediapipe_2d_denorm_mesh[:, 1] = mediapipe_2d_mesh[:, 1] * 224 
-
-        
-        print("rotatex" , rotatex)
-        print("rotatey" , rotatey)
-       
-        print("rotation error", np.linalg.norm(mediapipe_2d_denorm_mesh - mediapipe_2d_denorm_image))
-        
-        
-
-        return np.sum((mediapipe_2d_denorm_mesh - mediapipe_2d_denorm_image)**2)

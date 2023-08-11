@@ -2,74 +2,27 @@ from __future__ import absolute_import, division, print_function
 
 from flask import Flask, request, render_template, jsonify, Response, send_file
 
-from src.utils.visualization import  run_hand_detection, run_hand_detection_fp
-from src.utils.rendering import render_mesh_trimesh
-
-from src.utils.processing import normalize_vertices_and_joints,uv_to_xy,detect_mediapipe_2d, mediapipe_error_minimize_scalar, get_joint_angles
 import traceback
-import subprocess
-import shlex
-import argparse
 import os
 import glob
 import os.path as op
-import code
 import json
-import time
-import datetime
 import torch
-import torchvision.models as models
 from torchvision.utils import make_grid
-from manopth import demo
-from manopth.manolayer import ManoLayer
-import gc
 import numpy as np
-import cv2
-import mediapipe as mp
-from src.modeling.bert import BertConfig, Graphormer
-from src.modeling.bert import Graphormer_Hand_Network as Graphormer_Network
-from src.modeling._mano import MANO, Mesh
-from src.modeling.hrnet.hrnet_cls_net_gridfeat import get_cls_net_gridfeat
-from src.modeling.hrnet.config import config as hrnet_config
-from src.modeling.hrnet.config import update_config as hrnet_update_config
-import src.modeling.data.config as cfg
-from src.datasets.build import make_hand_data_loader
 
-from src.utils.logger import setup_logger
-from src.utils.comm import synchronize, is_main_process, get_rank, get_world_size, all_gather
-from src.utils.miscellaneous import mkdir, set_seed
-from src.utils.metric_logger import AverageMeter
-from src.utils.metric_pampjpe import reconstruction_error
-from src.utils.geometric_layers import orthographic_projection
-from flask_app.visualization_flask import  run_hand_detection, run_hand_detection_fp, get_joints, run_chessboard_detection
-from flask_app.rendering_flask import render_mesh_trimesh, render_flask, run_blender
+from src.utils.visualization import  run_hand_detection_flask, run_hand_detection_fp_flask, get_joints, run_chessboard_detection_flask, get_all_measurements_flask
+from src.utils.rendering import render_flask
 from src.utils.camera_calibration import calibrate
-from flask_app.processing_flask import normalize_vertices_and_joints,uv_to_xy,detect_mediapipe_2d, mediapipe_error_minimize_scalar, get_joint_angles, run_inference
+from src.tools.run_gphmer_handmesh_inference import predict
+from src.utils.rendering import run_blender
 from werkzeug.utils import secure_filename
 
-import matplotlib.cm as cm
-from PIL import Image
-from torchvision import transforms
-import mano
 import trimesh
-from trimesh.transformations import scale_matrix, translation_matrix
 import numpy as np
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-from mpl_toolkits.mplot3d.art3d import Poly3DCollection
-from matplotlib.widgets import Slider, RadioButtons 
 import shapely
-from shapely.geometry import Point
 
-from torch.nn.functional import normalize
-from scipy.optimize import least_squares, minimize, minimize_scalar, basinhopping
-from scipy.spatial import cKDTree
-from sklearn.preprocessing import normalize
-import matplotlib.image as mpimg
-import pyrender
-from shapelysmooth import taubin_smooth
 from threading import Thread
-import plotly.graph_objs as go
 
 
 if torch.cuda.is_available():
@@ -80,29 +33,12 @@ else:
 
 app = Flask(__name__)
 
-def get_default_args():
-    return {
-        "num_workers": 4,
-        "img_scale_factor": 1,
-        "image_file_or_path": './samples/hand_cropped',
-        "model_name_or_path": 'src/modeling/bert/bert-base-uncased/',
-        "resume_checkpoint": "./models/graphormer_release/graphormer_hand_state_dict.bin",
-        "output_dir": 'output/',
-        "config_name": "",
-        "arch": 'hrnet-w64',
-        "num_hidden_layers": 4,
-        "hidden_size": -1,
-        "num_attention_heads": 4,
-        "intermediate_size": -1,
-        "input_feat_dim": '2051,512,128',
-        "hidden_feat_dim": '1024,256,64',
-        "which_gcn": '0,0,1',
-        "mesh_type": 'hand',
-        "run_eval_only": True,
-        "device": 'cuda',
-        "seed": 88
-    }
 
+
+def allowed_file(filename):
+    ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def create_3d_trace(mesh):
     # Create a 3D scatter plot trace for the mesh
@@ -186,7 +122,7 @@ def upload_image():
     
 
     try:
-        thread = Thread(target=run_hand_detection_fp(image_path))
+        thread = Thread(target=run_hand_detection_fp_flask(image_path))
         thread.start()
 
         thread.join()
@@ -246,11 +182,6 @@ def get_json_data():
     return jsonify(data)
 
 
-def allowed_file(filename):
-    ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
 @app.route("/upload_images_calibration", methods=["POST"])
 def upload_images_calib():
     files = glob.glob('./samples/Chessboard_Images/*')
@@ -302,7 +233,7 @@ picture_status = ""
 @app.route("/start_hand_detection")
 def start_hand_detection():
     global picture_status
-    thread = Thread(target=run_hand_detection)
+    thread = Thread(target=run_hand_detection_flask)
     thread.start()
     thread.join()
    
@@ -320,7 +251,7 @@ def start_prediction():
   
 
     try:
-        predict()
+        prediction()
       
 
         return jsonify({"message": "Done"})
@@ -363,147 +294,14 @@ def orthosis_render():
 
 
 @app.route('/predict', methods=['POST'])
-def predict():
+def prediction():
 
-    args_dict = get_default_args()
-    global logger
-
-    # Setup CUDA, GPU & distributed training
-    args_dict["num_gpus"] = int(os.environ['WORLD_SIZE']) if 'WORLD_SIZE' in os.environ else 1
-    os.environ['OMP_NUM_THREADS'] = str(args_dict["num_workers"])
-    print('set os.environ[OMP_NUM_THREADS] to {}'.format(os.environ['OMP_NUM_THREADS']))
-   
-    mkdir(args_dict["output_dir"])
-    logger = setup_logger("Graphormer", args_dict["output_dir"], get_rank())
-    set_seed(args_dict["seed"], args_dict["num_gpus"])
-    logger.info("Using {} GPUs".format(args_dict["num_gpus"]))
-
-    mano_model = MANO().to(args_dict["device"])
-    mano_model.layer = mano_model.layer.cuda()
-    mesh_sampler = Mesh()
-
-    trans_encoder = []
-
-    input_feat_dim = [int(item) for item in args_dict["input_feat_dim"].split(',')]
-    hidden_feat_dim = [int(item) for item in args_dict["hidden_feat_dim"].split(',')]
-    output_feat_dim = input_feat_dim[1:] + [3]
-
-    which_blk_graph = [int(item) for item in args_dict["which_gcn"].split(',')]
-
-
-    if args_dict["run_eval_only"]==True and args_dict["resume_checkpoint"]!=None and args_dict["resume_checkpoint"]!='None' and 'state_dict' not in args_dict["resume_checkpoint"]:
-        # if only run eval, load checkpoint
-        logger.info("Evaluation: Loading from checkpoint {}".format(args_dict["resume_checkpoint"]))
-        _model = torch.load(args_dict["resume_checkpoint"])
-
-    else:
-        # init three transformer-encoder blocks in a loop
-        for i in range(len(output_feat_dim)):
-            config_class, model_class = BertConfig, Graphormer
-            config = config_class.from_pretrained(args_dict["config_name"] if args_dict["config_name"] \
-                    else args_dict["model_name_or_path"])
-
-            config.output_attentions = False
-            config.img_feature_dim = input_feat_dim[i] 
-            config.output_feature_dim = output_feat_dim[i]
-            args_dict["hidden_size"] = hidden_feat_dim[i]
-            args_dict["intermediate_size"] = int(args_dict["hidden_size"]*2)
-
-            if which_blk_graph[i]==1:
-                config.graph_conv = True
-                logger.info("Add Graph Conv")
-            else:
-                config.graph_conv = False
-
-            config.mesh_type = args_dict["mesh_type"]
-
-            # update model structure if specified in arguments
-            update_params = ['num_hidden_layers', 'hidden_size', 'num_attention_heads', 'intermediate_size']
-            for idx, param in enumerate(update_params):
-                arg_param = args_dict[param]
-                config_param = getattr(config, param)
-                if arg_param > 0 and arg_param != config_param:
-                    logger.info("Update config parameter {}: {} -> {}".format(param, config_param, arg_param))
-                    setattr(config, param, arg_param)
-
-            # init a transformer encoder and append it to a list
-            assert config.hidden_size % config.num_attention_heads == 0
-            model = model_class(config=config) 
-            logger.info("Init model from scratch.")
-            trans_encoder.append(model)
-        
-        # create backbone model
-        if args_dict["arch"]=='hrnet':
-            hrnet_yaml = 'models/hrnet/cls_hrnet_w40_sgd_lr5e-2_wd1e-4_bs32_x100.yaml'
-            hrnet_checkpoint = 'models/hrnet/hrnetv2_w40_imagenet_pretrained.pth'
-            hrnet_update_config(hrnet_config, hrnet_yaml)
-            backbone = get_cls_net_gridfeat(hrnet_config, pretrained=hrnet_checkpoint)
-            logger.info('=> loading hrnet-v2-w40 model')
-        elif args_dict["arch"]=='hrnet-w64':
-            hrnet_yaml = 'models/hrnet/cls_hrnet_w64_sgd_lr5e-2_wd1e-4_bs32_x100.yaml'
-            hrnet_checkpoint = 'models/hrnet/hrnetv2_w64_imagenet_pretrained.pth'
-            hrnet_update_config(hrnet_config, hrnet_yaml)
-            backbone = get_cls_net_gridfeat(hrnet_config, pretrained=hrnet_checkpoint)
-            logger.info('=> loading hrnet-v2-w64 model')
-        else:
-            print("=> using pre-trained model '{}'".format(args_dict["arch"]))
-            backbone = models.__dict__[args_dict["arch"]](pretrained=True)
-            # remove the last fc layer
-            backbone = torch.nn.Sequential(*list(backbone.children())[:-1])
-
-        trans_encoder = torch.nn.Sequential(*trans_encoder)
-        total_params = sum(p.numel() for p in trans_encoder.parameters())
-        logger.info('Graphormer encoders total parameters: {}'.format(total_params))
-        backbone_total_params = sum(p.numel() for p in backbone.parameters())
-        logger.info('Backbone total parameters: {}'.format(backbone_total_params))
-
-        # build end-to-end Graphormer network (CNN backbone + multi-layer Graphormer encoder)
-        _model = Graphormer_Network(config, backbone, trans_encoder)
-
-        if args_dict["resume_checkpoint"]!=None and args_dict["resume_checkpoint"]!='None':
-            # for fine-tuning or resume training or inference, load weights from checkpoint
-            logger.info("Loading state dict from checkpoint {}".format(args_dict["resume_checkpoint"]))
-            # workaround approach to load sparse tensor in graph conv.
-            state_dict = torch.load(args_dict["resume_checkpoint"])
-            _model.load_state_dict(state_dict, strict=False)
-            del state_dict
-            gc.collect()
-            torch.cuda.empty_cache()
-
-    # update configs to enable attention outputs
-    setattr(_model.trans_encoder[-1].config,'output_attentions', True)
-    setattr(_model.trans_encoder[-1].config,'output_hidden_states', True)
-    _model.trans_encoder[-1].bert.encoder.output_attentions = True
-    _model.trans_encoder[-1].bert.encoder.output_hidden_states =  True
-    for iter_layer in range(4):
-        _model.trans_encoder[-1].bert.encoder.layer[iter_layer].attention.self.output_attentions = True
-    for inter_block in range(3):
-        setattr(_model.trans_encoder[-1].config,'device', args_dict["device"])
-
-    _model.to(args_dict["device"])
-    logger.info("Run inference")
-
-    image_list = []
-    if not args_dict["image_file_or_path"]:
-        raise ValueError("image_file_or_path not specified")
-    if op.isfile(args_dict["image_file_or_path"]):
-        image_list = [args_dict["image_file_or_path"]]
-    elif op.isdir(args_dict["image_file_or_path"]):
-        # should be a path with images only
-        for filename in os.listdir(args_dict["image_file_or_path"]):
-            if filename.endswith(".png") or filename.endswith(".jpg") and 'pred' not in filename:
-                image_list.append(args_dict["image_file_or_path"]+'/'+filename) 
-
-    else:
-        raise ValueError("Cannot find images at {}".format(args_dict["image_file_or_path"]))
-
-    if (len(image_list) ==0):
-        raise ValueError("No Hand Image found - Please Retake Picture")
-    run_inference(image_list, _model, mano_model, mesh_sampler)
+    predict()
 
     render_flask()
 
-    get_all_measurements()
+    get_all_measurements_flask()
+
     return jsonify({"message": "Done"})
 
 @app.route('/count_images', methods=['GET'])
@@ -518,7 +316,7 @@ def count_images():
 
 @app.route('/video_feed_hand_detection')
 def video_feed_hand_detection():
-    return Response(run_hand_detection(),
+    return Response(run_hand_detection_flask(),
                     mimetype='multipart/x-mixed-replace; boundary=frame')
 
 
@@ -528,7 +326,7 @@ def video_feed_calibration():
     files = glob.glob('./samples/Chessboard_Images/*')
     for f in files:
         os.remove(f)
-    return Response(run_chessboard_detection(),
+    return Response(run_chessboard_detection_flask(),
                     mimetype='multipart/x-mixed-replace; boundary=frame')
 
 
@@ -572,76 +370,6 @@ def calculate_slices():
     return jsonify(normalVector=normal_json, multi_slices=multi_slices_json, planeCenters=center_array)
 
 
-def get_all_measurements():
-
-    chosen_joints = ['Thumb_2' ,'Thumb_3','Thumb_3', 'Thumb_4','Index_2', 'Index_3','Index_3', 'Index_4']
-    joint_names = ['Wrist', 'Thumb_1', 'Thumb_2', 'Thumb_3', 'Thumb_4', 'Index_1', 'Index_2', 'Index_3', 'Index_4', 'Middle_1', 'Middle_2', 'Middle_3', 'Middle_4', 'Ring_1', 'Ring_2', 'Ring_3', 'Ring_4', 'Pinky_1', 'Pinky_2', 'Pinky_3', 'Pinky_4']
-
-    vertices = np.load("./samples/hand_info_export/hand_verts.npy")
-    faces = np.load("./samples/hand_info_export/hand_faces.npy")
-    joints = np.load("./samples/hand_info_export/hand_joints.npy")
-
-    zip_joint_names = dict(zip(joint_names, joints))
-
-
-    #create Trimesh Object
-    mesh_vizualization = trimesh.Trimesh(vertices=vertices, faces=faces)
-    
-    normals = [np.array(zip_joint_names[chosen_joints[i+1]]) - np.array(zip_joint_names[chosen_joints[i]]) for i in range(0, len(chosen_joints), 2)]
-
-
-    fixed_center = [zip_joint_names[chosen_joints[i]] for i in range(0, len(chosen_joints), 2)]
-    heights = [np.linspace(0.0, np.linalg.norm(normal), 100) for normal in normals]
-    
-    
-    multi_slices = [mesh_vizualization.section_multiplane(plane_origin=i, 
-                                                         plane_normal=j, heights=k) for i, j, k in zip(fixed_center, normals, heights)]
-    
-    slice_polygons = []
-    for multislice in multi_slices:
-        for slice in multislice:
-          
-            slice_polygons.append(shapely.geometry.MultiPolygon([poly for poly in slice.polygons_full]))
-
-    
-
-    origin = Point(0, 0)
-    closest_polygon_lengths = []
-
-    for multi_polygon in slice_polygons:
-        closest_polygon = None
-        min_distance = float('inf')
-        
-        for polygon in multi_polygon.geoms:
-            center = polygon.centroid
-            distance = center.distance(origin)
-            
-            if distance < min_distance:
-                min_distance = distance
-                closest_polygon = polygon
-                
-        closest_polygon_lengths.append(closest_polygon.length * 1000)
-
-    measurements = {'Thumb contour base' : np.mean(closest_polygon_lengths[95:105]), 
-                    'Thumb contour extremity' : np.mean(closest_polygon_lengths[150:160]), 
-                    'Index contour base' : np.mean(closest_polygon_lengths[295:305]), 
-                    'Index contour extremity' : np.mean(closest_polygon_lengths[350:360]) 
-                   }
-
-    # Parse the JSON file
-    with open('./flask_app/Inkredable/in/default.json', 'r') as f:
-        data = json.load(f)
-
-    additional_measurements = data[2]  # assuming the measurements are in the 3rd item of the list in your JSON
-
-    # Replace the values in the JSON with the computed measurements
-    for key in measurements.keys():
-        if key in additional_measurements:
-            additional_measurements[key] = measurements[key]
-
-    # Write the changes back to the JSON file
-    with open('./flask_app/Inkredable/in/default.json', 'w') as f:
-        json.dump(data, f, indent=3)
 
    
 if __name__ == "__main__":
