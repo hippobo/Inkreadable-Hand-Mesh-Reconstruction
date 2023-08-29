@@ -26,6 +26,7 @@ RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.7 1
 
 RUN python3 setup.py build develop
 
+
 # Install pip packages
 RUN pip3 install --upgrade pip && \
     pip3 install torch==1.13.0+cu117 torchvision==0.14.0+cu117 torchaudio==0.13.0 --extra-index-url https://download.pytorch.org/whl/cu117 && \
@@ -43,6 +44,8 @@ RUN pip3 install ./manopth/.
 RUN bash scripts/download_blender_linux.sh
 
 RUN bash scripts/create_dirs.sh
+
+RUN bash scripts/download_models.sh
 
 # Create a non-root user and add to video group
 RUN useradd -ms /bin/bash myuser && usermod -a -G video myuser

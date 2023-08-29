@@ -15,22 +15,40 @@ from shapely.geometry import Point
 
 
 def get_joints(label_name):
+    """
+    Retrieve specific hand joints based on the provided label name.
     
-   
-        
-        if label_name == 'Thumb Base':
-            chosen_joints = ['Thumb_2' ,'Thumb_3']
-        if label_name == 'Thumb Extremity':
-            chosen_joints = ['Thumb_3', 'Thumb_4']
-        if label_name == 'Index Base':
-            chosen_joints = ['Index_2', 'Index_3']
-        if label_name == 'Index Extremity':
-            chosen_joints = ['Index_3', 'Index_4']
+    Parameters:
+    - label_name (str): Name of the label for which joints are to be retrieved.
+    
+    Returns:
+    - list: List of chosen joint names corresponding to the label.
+        """
 
-        return chosen_joints
+    
+    if label_name == 'Thumb Base':
+        chosen_joints = ['Thumb_2' ,'Thumb_3']
+    if label_name == 'Thumb Extremity':
+        chosen_joints = ['Thumb_3', 'Thumb_4']
+    if label_name == 'Index Base':
+        chosen_joints = ['Index_2', 'Index_3']
+    if label_name == 'Index Extremity':
+        chosen_joints = ['Index_3', 'Index_4']
+
+    return chosen_joints
 
 def resizeAndPad(img, size, padColor=0):
-
+    """
+    Resize the input image and pad it to the specified size.
+    
+    Parameters:
+    - img (array): Input image to be resized and padded.
+    - size (tuple): Desired dimensions (height, width) for the output image.
+    - padColor (int or list): Color for padding. Default is 0 (black).
+    
+    Returns:
+    - array: Resized and padded image.
+    """
     h, w = img.shape[:2]
     sh, sw = size
 

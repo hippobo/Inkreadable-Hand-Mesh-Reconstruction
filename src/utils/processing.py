@@ -27,9 +27,19 @@ transform_visualize = transforms.Compose([
                     transforms.CenterCrop(224),
                     transforms.ToTensor()])
 
-
 def run_inference(image_list, Graphormer_model, mano, mesh_sampler):
+    """
+    Runs inference on a list of images using the Graphormer model and MANO hand model.
     
+    Parameters:
+    - image_list: List of image file paths.
+    - Graphormer_model: Pretrained Graphormer model.
+    - mano: MANO hand model.
+    - mesh_sampler: Mesh sampler object.
+    
+    Returns:
+    - None. Performs forward-pass and computes the 3D joints and vertices.
+    """
     Graphormer_model.eval()
     mano.eval()
     with torch.no_grad():
@@ -193,7 +203,21 @@ def minimize_2d_mediapipe_wrist(translation_vector, translation_z, mesh_scaled, 
 
 
 def mediapipe_error_minimize_scalar(scale, mesh, wrist_pos_image, translation_vector_xyz, K, mediapipe_2d_mesh, mediapipe_2d_image):
-
+    """
+    Minimizes the error between MediaPipe detected 2D landmarks and 2D projection of scaled 3D mesh vertices.
+    
+    Parameters:
+    - scale: Scaling factor for the mesh.
+    - mesh: 3D mesh object.
+    - wrist_pos_image: 2D position of the wrist in the image.
+    - translation_vector_xyz: 3D translation vector.
+    - K: Camera intrinsic matrix.
+    - mediapipe_2d_mesh: 2D landmarks from MediaPipe for the mesh.
+    - mediapipe_2d_image: 2D landmarks from MediaPipe for the image.
+    
+    Returns:
+    - Error value (float): Sum of squared differences after minimizing the error.
+    """
 
     scaling = scale_matrix(scale)
     mesh_scaled = mesh.copy()

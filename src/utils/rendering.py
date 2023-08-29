@@ -16,7 +16,20 @@ from scipy.optimize import basinhopping
 
 
 def render_mesh_trimesh(mesh, K, translation_x, translation_y, translation_z, display=False):
-
+    """
+    Render a 3D mesh using pyrender and trimesh.
+    
+    Parameters:
+    - mesh: 3D mesh object to be rendered.
+    - K (array): Camera intrinsic matrix.
+    - translation_x (float): X-axis translation for mesh.
+    - translation_y (float): Y-axis translation for mesh.
+    - translation_z (float): Z-axis translation for mesh.
+    - display (bool, optional): Whether to display the rendered mesh using pyrender viewer. Default is False.
+    
+    Returns:
+    - None. Performs the rendering of the mesh.
+    """
     mesh_render = pyrender.Mesh.from_trimesh(mesh)
     mesh_translate = np.array([
     [1.0, 0.0, 0.0, translation_x ],
