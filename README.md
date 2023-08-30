@@ -61,6 +61,24 @@ docker compose down
 ```
 This will start a local flask webapp on http://localhost:5000. Go to the botton of this README for more information.
 
+NOTE: if you get the error: 
+```bash
+NoSuchDisplayException: Cannot connect to "None" 
+```
+You need to give access to the X11 server for offscreen rendering with the command:
+```bash
+xhost +local:
+
+```
+
+You can revert this by doing:
+
+```bash
+xhost -local:
+
+```
+
+
 ## Without Docker 
 MeshGraphormer is developed based on Ubuntu 16.04 and NVIDIA GPU cards. 
 

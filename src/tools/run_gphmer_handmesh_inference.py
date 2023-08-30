@@ -55,7 +55,6 @@ from scipy.optimize import least_squares, minimize, minimize_scalar, basinhoppin
 from scipy.spatial import cKDTree
 from sklearn.preprocessing import normalize
 import matplotlib.image as mpimg
-import pyrender
 from shapelysmooth import taubin_smooth
 
 
