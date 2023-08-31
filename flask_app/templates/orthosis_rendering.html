@@ -91,7 +91,7 @@ document.getElementById("applyChanges").addEventListener("click", function() {
 
 // Collect data from the table
 document.querySelectorAll("#jsonData tbody tr").forEach(row => {
-    let type = row.cells[0].innerText; 
+    let type = row.cells[0].innerText;
     let value = row.cells[1].getElementsByTagName('input')[0].value;
     jsonData[type] = JSON.parse(value);
 });
@@ -217,4 +217,3 @@ document.getElementById("renderSTLButton").addEventListener("click", function() 
 </body>
 </html>
     
-   

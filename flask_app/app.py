@@ -91,7 +91,7 @@ def download_stl():
     username = request.args.get('username', default='default', type=str)
     if username == "":
         username = "writing"
-    path = 'Inkredable/out/default.STL'
+    path = './src/utils/Inkredable/out/default.STL'
     return send_file(path, as_attachment=True, download_name=f'{username}_orthosis.STL')
 
 @app.route("/upload_image", methods=["POST"])
@@ -139,7 +139,7 @@ def render_orthosis():
     thread.join()
 
     # Load the STL file
-    your_mesh = trimesh.load_mesh('./flask_app/Inkredable/out/default.STL')
+    your_mesh = trimesh.load_mesh('./src/utils/Inkredable/out/default.STL')
 
     # Convert the mesh data to JSON
     data = {
@@ -152,7 +152,7 @@ def render_orthosis():
     return jsonify(data)  # Use jsonify to return a response with the application/json mimetype
 @app.route("/get_json_data", methods=["GET", "POST"])
 def get_json_data():
-    json_path = './flask_app/Inkredable/in/default.json'
+    json_path = './src/utils/Inkredable/in/default.json'
     
     if request.method == "POST":
         # Load the existing JSON data
